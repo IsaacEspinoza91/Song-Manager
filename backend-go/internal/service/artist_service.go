@@ -78,6 +78,5 @@ func (s *artistService) Delete(ctx context.Context, id int64) error {
 	if id <= 0 {
 		return errors.New("ID de artista inválido")
 	}
-
 	return s.repo.Delete(ctx, id)
 }

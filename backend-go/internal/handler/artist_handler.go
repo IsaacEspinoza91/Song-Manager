@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -46,12 +47,13 @@ func (h *ArtistHandler) Create(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusCreated, artist) // 201 Created
 }
 
-// GET ALL (GET /artists)
+// GET ALL (GET /artists/all)
 func (h *ArtistHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	artists, err := h.service.GetAll(r.Context())
 	if err != nil {
 		// Si falla la base de datos, es un error interno del servidor (500)
-		WriteError(w, http.StatusInternalServerError, "Error interno obteniendo artistas", err.Error())
+		log.Printf("[ERROR INTERNO en Handler] %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Error interno obteniendo artistas", nil)
 		return
 	}
 
@@ -68,7 +70,7 @@ func (h *ArtistHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	idString := r.PathValue("id")
 	id, err := strconv.ParseInt(idString, 10, 64)
 	if err != nil || id <= 0 {
-		WriteError(w, http.StatusBadRequest, "El ID de la URL debe ser un número entero válido mayor a 0", nil)
+		WriteError(w, http.StatusBadRequest, "El ID de la URL debe ser un número entero válido mayor a 0", err.Error())
 		return
 	}
 
@@ -79,14 +81,15 @@ func (h *ArtistHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		WriteError(w, http.StatusInternalServerError, "Error al buscar el artista", err.Error()) // 500
+		log.Printf("[ERROR INTERNO en Handler] %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Error al buscar el artista", nil) // 500
 		return
 	}
 
 	WriteJSON(w, http.StatusOK, artist) // 200 OK
 }
 
-// GET ALL PAG (GET /artists/pag?page=2&limit=5&genre=rock&country=chile)
+// GET ALL PAG (GET /artists?page=2&limit=5&genre=rock&country=chile)
 func (h *ArtistHandler) GetAllPaginated(w http.ResponseWriter, r *http.Request) {
 	// Extraer query params
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
@@ -112,7 +115,8 @@ func (h *ArtistHandler) GetAllPaginated(w http.ResponseWriter, r *http.Request) 
 	// Llamar servicio
 	paginatedData, err := h.service.GetAllPaginated(r.Context(), filter, pagination)
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, "Error obteniendo la lista de artistas", err.Error())
+		log.Printf("[ERROR INTERNO en Handler] %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Error obteniendo la lista de artistas", nil)
 		return
 	}
 
@@ -127,7 +131,7 @@ func (h *ArtistHandler) Update(w http.ResponseWriter, r *http.Request) {
 	// Convertir string a int64 (base 10, 64 bits)
 	id, err := strconv.ParseInt(idString, 10, 64)
 	if err != nil || id <= 0 {
-		WriteError(w, http.StatusBadRequest, "El ID de la URL debe ser un número entero válido mayor a 0", nil)
+		WriteError(w, http.StatusBadRequest, "El ID de la URL debe ser un número entero válido mayor a 0", err.Error())
 		return
 	}
 
@@ -154,7 +158,8 @@ func (h *ArtistHandler) Update(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Cualquier otro error de validación o base de datos
-		WriteError(w, http.StatusInternalServerError, "Error actualizando al artista", err.Error()) // 500
+		log.Printf("[ERROR INTERNO en Handler] %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Error actualizando al artista", nil) // 500
 		return
 	}
 
@@ -167,7 +172,7 @@ func (h *ArtistHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	idString := r.PathValue("id")
 	id, err := strconv.ParseInt(idString, 10, 64)
 	if err != nil || id <= 0 {
-		WriteError(w, http.StatusBadRequest, "El ID de la URL debe ser un número entero válido mayor a 0", nil)
+		WriteError(w, http.StatusBadRequest, "El ID de la URL debe ser un número entero válido mayor a 0", err.Error())
 		return
 	}
 
@@ -178,7 +183,8 @@ func (h *ArtistHandler) Delete(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, http.StatusNotFound, err.Error(), nil) // 404
 			return
 		}
-		WriteError(w, http.StatusInternalServerError, "Error al eliminar el artista", err.Error()) // 500
+		log.Printf("[ERROR INTERNO en Handler] %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Error al eliminar el artista", nil) // 500
 		return
 	}
 

@@ -41,14 +41,14 @@ func (r *artistRepository) Create(ctx context.Context, input *domain.ArtistInput
 			&artist.UpdatedAt,
 		)
 	if err != nil {
-		return nil, errors.New("error creando al artista")
+		return nil, fmt.Errorf("error creando al artista: %w", err)
 	}
 	return &artist, nil
 }
 
 // 2. READ
 func (r *artistRepository) GetByID(ctx context.Context, id int64) (*domain.Artist, error) {
-	// Funciona sin RETURNING porqueno modifica datos
+	// Funciona sin RETURNING porque no modifica datos
 	query := `
 		SELECT id, name, genre, country, bio, image_url, created_at, updated_at
 		FROM artists 
@@ -58,10 +58,10 @@ func (r *artistRepository) GetByID(ctx context.Context, id int64) (*domain.Artis
 	var a domain.Artist
 	err := r.db.QueryRow(ctx, query, id).Scan(&a.ID, &a.Name, &a.Genre, &a.Country, &a.Bio, &a.ImageURL, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("artista no encontrado")
 		}
-		return nil, errors.New("error obteniendo al artista")
+		return nil, fmt.Errorf("error obteniendo al artista: %w", err)
 	}
 	return &a, nil
 }
@@ -77,7 +77,7 @@ func (r *artistRepository) GetAll(ctx context.Context) ([]domain.Artist, error) 
 	`
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
-		return nil, errors.New("error obteniendo los artistas")
+		return nil, fmt.Errorf("error ejecutando query para obtener los artistas: %w", err)
 	}
 	defer rows.Close()
 
@@ -97,14 +97,14 @@ func (r *artistRepository) GetAll(ctx context.Context) ([]domain.Artist, error) 
 			&a.UpdatedAt,
 		)
 		if err != nil {
-			return nil, errors.New("error escaneando artista")
+			return nil, fmt.Errorf("error escaneando fila de artista: %w", err)
 		}
 
 		artists = append(artists, a)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, errors.New("error iterando las filas")
+		return nil, fmt.Errorf("error iterando las filas de artistas: %w", err)
 	}
 
 	return artists, nil
@@ -162,7 +162,7 @@ func (r *artistRepository) GetAllPaginated(ctx context.Context, filter domain.Ar
 	var totalItems int
 	err := r.db.QueryRow(ctx, countQuery, args...).Scan(&totalItems)
 	if err != nil {
-		return nil, errors.New("error contando los artistas")
+		return nil, fmt.Errorf("error contando los artistas para paginación: %w", err)
 	}
 
 	// 4. Agregar Paginación a la consulta principal
@@ -172,7 +172,7 @@ func (r *artistRepository) GetAllPaginated(ctx context.Context, filter domain.Ar
 	// 5. Ejecutar la consulta final
 	rows, err := r.db.Query(ctx, baseQuery, args...)
 	if err != nil {
-		return nil, errors.New("error obteniendo los artistas")
+		return nil, fmt.Errorf("error ejecutando query paginada de artistas: %w", err)
 	}
 	defer rows.Close()
 
@@ -181,13 +181,13 @@ func (r *artistRepository) GetAllPaginated(ctx context.Context, filter domain.Ar
 		var a domain.Artist
 		err := rows.Scan(&a.ID, &a.Name, &a.Genre, &a.Country, &a.Bio, &a.ImageURL, &a.CreatedAt, &a.UpdatedAt)
 		if err != nil {
-			return nil, errors.New("error escaneando artista")
+			return nil, fmt.Errorf("error escaneando artista en paginación: %w", err)
 		}
 		artists = append(artists, a)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, errors.New("error iterando las filas")
+		return nil, fmt.Errorf("error iterando filas en paginación: %w", err)
 	}
 
 	// 6. Retornar la estructura genérica armada
@@ -219,10 +219,10 @@ func (r *artistRepository) Update(ctx context.Context, id int64, input *domain.A
 			&artist.UpdatedAt,
 		)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("artista no encontrado")
 		}
-		return nil, errors.New("error obteniendo al artista")
+		return nil, fmt.Errorf("error actualizando al artista ID %d: %w", id, err)
 	}
 	return &artist, nil
 }
@@ -232,13 +232,13 @@ func (r *artistRepository) Delete(ctx context.Context, id int64) error {
 	query := `UPDATE artists SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL`
 	res, err := r.db.Exec(ctx, query, id)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return errors.New("artista no encontrado")
 		}
-		return errors.New("error eliminando al artista")
+		return fmt.Errorf("error eliminando al artista ID %d: %w", id, err)
 	}
 	if res.RowsAffected() == 0 {
-		return errors.New("ningún artista fue eliminado")
+		return fmt.Errorf("error ningun artista eliminado: %w", err)
 	}
 	return nil
 }

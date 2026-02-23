@@ -3,14 +3,17 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 
 	"github.com/IsaacEspinoza91/Song-Manager/internal/database"
+	"github.com/IsaacEspinoza91/Song-Manager/internal/handler"
+	"github.com/IsaacEspinoza91/Song-Manager/internal/repository"
+	"github.com/IsaacEspinoza91/Song-Manager/internal/service"
 	"github.com/joho/godotenv"
 )
 
 func main() {
 	_ = godotenv.Load()
-
 	ctx := context.Background()
 
 	// Inicializar DB
@@ -20,5 +23,18 @@ func main() {
 	}
 	defer dbPool.Close()
 	log.Println("Conectado a PostgreSQL exitosamente")
+
+	// Crear repositorios (Inyectar DB)
+	artistRepo := repository.NewArtistRepository(dbPool)
+
+	// Crear servicios (Inyectar repo)
+	artistService := service.NewArtistService(artistRepo)
+
+	// Crar enrutador (Inyectar services)
+	router := handler.NewRouter(artistService)
+
+	// Levantar Server
+	log.Println("Servidor corriendo en el puerto 8080...")
+	http.ListenAndServe(":8080", router) // envolver en middleware
 
 }

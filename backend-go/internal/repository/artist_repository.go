@@ -9,20 +9,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type ArtistRepository interface {
-	Create(ctx context.Context, input *domain.ArtistInput) (*domain.Artist, error)
-	GetByID(ctx context.Context, id int64) (*domain.Artist, error)
-	Count(ctx context.Context) (int64, error)
-	Update(ctx context.Context, id int64, input domain.ArtistInput) (*domain.Artist, error)
-	Delete(ctx context.Context, id int64) error
-}
-
 // artistRepository Maneja comunicacion con db
 type artistRepository struct {
 	db *pgxpool.Pool
 }
 
-func NewArtistRepository(db *pgxpool.Pool) *artistRepository {
+// Al implementar la interfaz, cualquier otra parte del codigo solo puede usar los metodos definidos ahi
+// Ademas, si en el futuro cambia la db, solo debo crear otro archivo repo y cumplir la interfaz
+func NewArtistRepository(db *pgxpool.Pool) domain.ArtistRepository {
 	return &artistRepository{db: db}
 }
 
@@ -69,6 +63,48 @@ func (r *artistRepository) GetByID(ctx context.Context, id int64) (*domain.Artis
 		return nil, errors.New("error obteniendo al artista")
 	}
 	return &a, nil
+}
+
+// Retorno de slice, los artistas se guardan juntos en memoria y es mas facil de procesar.
+// Usa slice de punteros cuando la estructura es gigante
+func (r *artistRepository) GetAll(ctx context.Context) ([]domain.Artist, error) {
+	query := `
+		SELECT id, name, genre, country, bio, image_url, created_at, updated_at 
+		FROM artists
+		WHERE deleted_at IS NULL
+		ORDER BY id ASC
+	`
+	rows, err := r.db.Query(ctx, query)
+	if err != nil {
+		return nil, errors.New("error obteniendo los artistas")
+	}
+	defer rows.Close()
+
+	var artists []domain.Artist
+	for rows.Next() {
+		var a domain.Artist
+		err := rows.Scan(
+			&a.ID,
+			&a.Name,
+			&a.Genre,
+			&a.Country,
+			&a.Bio,
+			&a.ImageURL,
+			&a.CreatedAt,
+			&a.UpdatedAt,
+		)
+		if err != nil {
+			return nil, errors.New("error escaneando artista")
+		}
+
+		artists = append(artists, a)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, errors.New("error iterando las filas")
+	}
+
+	return artists, nil
 }
 
 func (r *artistRepository) Count(ctx context.Context) (int64, error) {
@@ -131,8 +167,7 @@ func (r *artistRepository) Delete(ctx context.Context, id int64) error {
 // Nota que las transacciones se usan cuando se van a ejecutar 2 o mas operaciones sql
 // Para una operacion simple (1 query) no es necesario porque en si ya es una transaccion implicita
 
-// GetALL no pag
-// GetALL no pag deleted
+// GetALL no pag deleted  SOLO ADMIN
 // Get pag
 // get pag con filtros  preguntar ia si es buena practica dar la opcion de seleccionar deleted o no
 // Get discos con canciones

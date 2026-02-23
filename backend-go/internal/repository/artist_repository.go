@@ -232,13 +232,10 @@ func (r *artistRepository) Delete(ctx context.Context, id int64) error {
 	query := `UPDATE artists SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL`
 	res, err := r.db.Exec(ctx, query, id)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errors.New("artista no encontrado")
-		}
 		return fmt.Errorf("error eliminando al artista ID %d: %w", id, err)
 	}
 	if res.RowsAffected() == 0 {
-		return fmt.Errorf("error ningun artista eliminado: %w", err)
+		return errors.New("artista no encontrado")
 	}
 	return nil
 }

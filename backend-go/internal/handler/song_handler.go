@@ -34,6 +34,11 @@ func (h *SongHandler) Create(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, http.StatusBadRequest, "Datos de entrada inválidos", valErrs)
 			return
 		}
+
+		// if caso id artista no existe code 400 bad request
+
+		WriteError(w, http.StatusInternalServerError, "No se pudo crear la cancion", err.Error())
+		return
 	}
 
 	WriteJSON(w, http.StatusCreated, song) // 201
@@ -44,7 +49,12 @@ func (h *SongHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	idString := r.PathValue("id")
 	id, err := strconv.ParseInt(idString, 10, 54)
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, "El ID de la URL debe ser un número entero válido mayor a 0", err.Error())
+		log.Printf("[ERROR en Handler] %v\n", err)
+		WriteError(w, http.StatusBadRequest, "El ID de la URL debe ser un número entero válido mayor a 0", nil)
+		return
+	}
+	if id <= 0 {
+		WriteError(w, http.StatusBadRequest, "El ID debe ser mayor a 0", nil)
 		return
 	}
 
@@ -119,7 +129,12 @@ func (h *SongHandler) Update(w http.ResponseWriter, r *http.Request) {
 	idString := r.PathValue("id")
 	id, err := strconv.ParseInt(idString, 10, 54)
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, "El ID de la URL debe ser un número entero válido mayor a 0", err.Error())
+		log.Printf("[ERROR en Handler] %v\n", err)
+		WriteError(w, http.StatusBadRequest, "El ID de la URL debe ser un número entero válido mayor a 0", nil)
+		return
+	}
+	if id <= 0 {
+		WriteError(w, http.StatusBadRequest, "El ID debe ser mayor a 0", nil)
 		return
 	}
 
@@ -141,6 +156,9 @@ func (h *SongHandler) Update(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, http.StatusNotFound, err.Error(), nil) // 404
 			return
 		}
+
+		// if caso id artista no existe code 400 bad request
+
 		log.Printf("[ERROR INTERNO en Handler] %v\n", err)
 		WriteError(w, http.StatusInternalServerError, "Error actualizando la cancion", nil) // 500
 		return
@@ -154,7 +172,12 @@ func (h *SongHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	idString := r.PathValue("id")
 	id, err := strconv.ParseInt(idString, 10, 54)
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, "El ID de la URL debe ser un número entero válido mayor a 0", err.Error())
+		log.Printf("[ERROR en Handler] %v\n", err)
+		WriteError(w, http.StatusBadRequest, "El ID de la URL debe ser un número entero válido mayor a 0", nil)
+		return
+	}
+	if id <= 0 {
+		WriteError(w, http.StatusBadRequest, "El ID debe ser mayor a 0", nil)
 		return
 	}
 

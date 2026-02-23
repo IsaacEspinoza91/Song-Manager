@@ -43,7 +43,7 @@ func (r *songRepository) Create(ctx context.Context, input *domain.SongInput) (*
 	// 3. Insertar las relaciones en la tabla intermedia (si es que enviaron artistas)
 	if len(input.Artists) > 0 {
 		queryArtistSong := `
-			INSERT INTO artist_songs (song_id, artist_id, role) 
+			INSERT INTO song_artists (song_id, artist_id, role) 
 			VALUES ($1, $2, $3)
 		`
 
@@ -95,11 +95,11 @@ func (r *songRepository) GetByID(ctx context.Context, id int64) (*domain.Song, e
 	}
 
 	// 2. Obtener los artistas y sus roles usando JOIN
-	// Hacemos JOIN entre artists y artist_songs para cruzar los datos
+	// Hacemos JOIN entre artists y song_artists para cruzar los datos
 	queryArtists := `
 		SELECT a.id, a.name, asg.role
 		FROM artists a
-		INNER JOIN artist_songs asg ON a.id = asg.artist_id
+		INNER JOIN song_artists asg ON a.id = asg.artist_id
 		WHERE asg.song_id = $1 AND a.deleted_at IS NULL
 	`
 	rows, err := r.db.Query(ctx, queryArtists, id)
@@ -169,7 +169,7 @@ func (r *songRepository) GetAll(ctx context.Context) ([]domain.Song, error) {
 	queryArtists := `
 		SELECT asg.song_id, a.id, a.name, asg.role
 		FROM artists a
-		INNER JOIN song_artist asg ON a.id = asg.artist_id
+		INNER JOIN song_artists asg ON a.id = asg.artist_id
 		WHERE asg.song_id = ANY($1) AND a.deleted_at IS NULL
 	`
 	artistRows, err := r.db.Query(ctx, queryArtists, songIDs)
@@ -223,6 +223,7 @@ func (r *songRepository) GetAllPaginated(ctx context.Context, filter domain.Song
 		baseQuery += condition
 		countQuery += condition
 		args = append(args, filter.ArtistID)
+		argID++
 	}
 	// Busqueda parcial nombre artista
 	if filter.ArtistName != "" {
@@ -277,7 +278,7 @@ func (r *songRepository) GetAllPaginated(ctx context.Context, filter domain.Song
 		queryArtists := `
 			SELECT asg.song_id, a.id, a.name, asg.role
 			FROM artists a
-			INNER JOIN artist_songs asg ON a.id = asg.artist_id
+			INNER JOIN song_artists asg ON a.id = asg.artist_id
 			WHERE asg.song_id = ANY($1) AND a.deleted_at IS NULL
 		`
 		artistRows, err := r.db.Query(ctx, queryArtists, songIDs)
@@ -344,12 +345,13 @@ func (r *songRepository) Update(ctx context.Context, id int64, input *domain.Son
 	// 3. Insertar nuevas relaciones, solo si vienen en input dto
 	if len(input.Artists) > 0 {
 		insertRelQuery := `
-			INSERT INTO song_artist (song_id, artist_id, role)
+			INSERT INTO song_artists (song_id, artist_id, role)
 			VALUES ($1, $2, $3)
 		`
 		for _, a := range input.Artists {
 			_, err := tx.Exec(ctx, insertRelQuery, id, a.ArtistID, a.Role)
 			if err != nil {
+				// falta caso retornar error id de artista no existe
 				return nil, fmt.Errorf("error insertando nueva relación con artista ID %d: %w", a.ArtistID, err)
 			}
 		}
@@ -374,13 +376,10 @@ func (r *songRepository) Delete(ctx context.Context, id int64) error {
 	query := `UPDATE songs SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL`
 	res, err := r.db.Exec(ctx, query, id)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errors.New("cancion no encontrada")
-		}
-		return fmt.Errorf("error eliminando a la cancion ID %d: %w", id, err)
+		return fmt.Errorf("error eliminando a la canción ID %d: %w", id, err)
 	}
 	if res.RowsAffected() == 0 {
-		return fmt.Errorf("error ninguna cancion eliminada: %w", err)
+		return errors.New("canción no encontrada")
 	}
 	return nil
 }

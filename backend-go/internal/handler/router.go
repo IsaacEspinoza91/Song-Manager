@@ -24,6 +24,10 @@ func NewRouter(artistService domain.ArtistService, songService domain.SongServic
 
 	mux.HandleFunc("POST /songs", songHandler.Create)
 	mux.HandleFunc("GET /songs/{id}", songHandler.GetByID)
+	mux.HandleFunc("GET /songs/all", songHandler.GetAll)
+	mux.HandleFunc("GET /songs", songHandler.GetAllPaginated)
+	mux.HandleFunc("PUT /songs/{id}", songHandler.Update)
+	mux.HandleFunc("DELETE /songs/{id}", songHandler.Delete)
 
 	return mux
 }

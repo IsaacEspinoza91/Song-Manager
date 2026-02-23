@@ -69,8 +69,13 @@ func (h *ArtistHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 func (h *ArtistHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	idString := r.PathValue("id")
 	id, err := strconv.ParseInt(idString, 10, 64)
-	if err != nil || id <= 0 {
-		WriteError(w, http.StatusBadRequest, "El ID de la URL debe ser un número entero válido mayor a 0", err.Error())
+	if err != nil {
+		log.Printf("[ERROR en Handler] %v\n", err)
+		WriteError(w, http.StatusBadRequest, "El ID de la URL debe ser un número entero válido mayor a 0", nil)
+		return
+	}
+	if id <= 0 {
+		WriteError(w, http.StatusBadRequest, "El ID debe ser mayor a 0", nil)
 		return
 	}
 
@@ -127,11 +132,14 @@ func (h *ArtistHandler) GetAllPaginated(w http.ResponseWriter, r *http.Request) 
 func (h *ArtistHandler) Update(w http.ResponseWriter, r *http.Request) {
 	// Extraer ID, definido en router {id}
 	idString := r.PathValue("id")
-
-	// Convertir string a int64 (base 10, 64 bits)
-	id, err := strconv.ParseInt(idString, 10, 64)
-	if err != nil || id <= 0 {
-		WriteError(w, http.StatusBadRequest, "El ID de la URL debe ser un número entero válido mayor a 0", err.Error())
+	id, err := strconv.ParseInt(idString, 10, 64) // Convertir string a int64 (base 10, 64 bits)
+	if err != nil {
+		log.Printf("[ERROR en Handler] %v\n", err)
+		WriteError(w, http.StatusBadRequest, "El ID de la URL debe ser un número entero válido mayor a 0", nil)
+		return
+	}
+	if id <= 0 {
+		WriteError(w, http.StatusBadRequest, "El ID debe ser mayor a 0", nil)
 		return
 	}
 
@@ -171,8 +179,13 @@ func (h *ArtistHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	// Extraer y convertir el ID
 	idString := r.PathValue("id")
 	id, err := strconv.ParseInt(idString, 10, 64)
-	if err != nil || id <= 0 {
-		WriteError(w, http.StatusBadRequest, "El ID de la URL debe ser un número entero válido mayor a 0", err.Error())
+	if err != nil {
+		log.Printf("[ERROR en Handler] %v\n", err)
+		WriteError(w, http.StatusBadRequest, "El ID de la URL debe ser un número entero válido mayor a 0", nil)
+		return
+	}
+	if id <= 0 {
+		WriteError(w, http.StatusBadRequest, "El ID debe ser mayor a 0", nil)
 		return
 	}
 

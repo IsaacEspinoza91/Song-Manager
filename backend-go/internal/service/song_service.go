@@ -32,11 +32,7 @@ func (s *songService) GetByID(ctx context.Context, id int64) (*domain.Song, erro
 		return nil, errors.New("ID de cancion inválido")
 	}
 
-	song, err := s.repo.GetByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	return song, nil
+	return s.repo.GetByID(ctx, id)
 }
 
 func (s *songService) GetAll(ctx context.Context) ([]domain.Song, error) {
@@ -44,6 +40,7 @@ func (s *songService) GetAll(ctx context.Context) ([]domain.Song, error) {
 }
 
 func (s *songService) GetAllPaginated(ctx context.Context, filter domain.SongFilter, params domain.PaginationParams) (*domain.PaginatedResult[domain.Song], error) {
+	// Dentro de pagination.go se hacen validaciones de page y limit
 	return s.repo.GetAllPaginated(ctx, filter, params)
 }
 

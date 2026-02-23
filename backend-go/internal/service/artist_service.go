@@ -51,6 +51,10 @@ func (s *artistService) GetAll(ctx context.Context) ([]domain.Artist, error) {
 	return s.repo.GetAll(ctx)
 }
 
+func (s *artistService) GetAllPaginated(ctx context.Context, filter domain.ArtistFilter, params domain.PaginationParams) (*domain.PaginatedResult[domain.Artist], error) {
+	return s.repo.GetAllPaginated(ctx, filter, params)
+}
+
 // 3. Update
 func (s *artistService) Update(ctx context.Context, id int64, input *domain.ArtistInput) (*domain.Artist, error) {
 	if err := input.Validate(); err != nil {

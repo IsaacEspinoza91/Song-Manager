@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/IsaacEspinoza91/Song-Manager/internal/domain"
 	"github.com/jackc/pgx/v5"
@@ -80,7 +81,9 @@ func (r *artistRepository) GetAll(ctx context.Context) ([]domain.Artist, error) 
 	}
 	defer rows.Close()
 
-	var artists []domain.Artist
+	// No usar porque no inicializa slice, si no hay objetos retorna nil
+	//var artists []domain.Artist
+	artists := make([]domain.Artist, 0) // o también: artists := []domain.Artist{}
 	for rows.Next() {
 		var a domain.Artist
 		err := rows.Scan(
@@ -116,6 +119,82 @@ func (r *artistRepository) Count(ctx context.Context) (int64, error) {
 		return 0, err
 	}
 	return total, nil
+}
+
+// No es recomendable usar transaccion en este metodo porque no modifican la base de datos.
+// Efectivamente puede haber un pequeño error de datos, pero nada grave. Es mejor asumir ese riesgo
+// que usar recursos adicionales de memoria para bloquear la db en ese momento
+func (r *artistRepository) GetAllPaginated(ctx context.Context, filter domain.ArtistFilter, params domain.PaginationParams) (*domain.PaginatedResult[domain.Artist], error) {
+	// 1. Consultas base
+	baseQuery := `SELECT id, name, genre, country, bio, image_url, created_at, updated_at FROM artists WHERE deleted_at IS NULL`
+	countQuery := `SELECT COUNT(*) FROM artists WHERE deleted_at IS NULL`
+
+	var args []interface{} // Slice de cualquier tipo
+	argID := 1             // Rastreador de la posición del parámetro ($1, $2, etc.)
+
+	// 2. Construir filtros dinámicamente
+	if filter.Name != "" {
+		// Agregamos la condición a ambas consultas
+		condition := fmt.Sprintf(" AND name ILIKE $%d", argID) // ILIKE ignora mayusculas o minusculas
+		baseQuery += condition
+		countQuery += condition
+
+		// Agregamos el valor envuelto en '%' para la búsqueda parcial
+		args = append(args, "%"+filter.Name+"%")
+		argID++
+	}
+	if filter.Genre != "" {
+		condition := fmt.Sprintf(" AND genre ILIKE $%d", argID)
+		baseQuery += condition
+		countQuery += condition
+		args = append(args, "%"+filter.Genre+"%")
+		argID++
+	}
+	if filter.Country != "" {
+		condition := fmt.Sprintf(" AND country ILIKE $%d", argID)
+		baseQuery += condition
+		countQuery += condition
+		args = append(args, "%"+filter.Country+"%")
+		argID++
+	}
+
+	// 3. Obtener el total de elementos (para calcular las páginas)
+	var totalItems int
+	err := r.db.QueryRow(ctx, countQuery, args...).Scan(&totalItems)
+	if err != nil {
+		return nil, errors.New("error contando los artistas")
+	}
+
+	// 4. Agregar Paginación a la consulta principal
+	baseQuery += fmt.Sprintf(" ORDER BY id ASC LIMIT $%d OFFSET $%d", argID, argID+1)
+	args = append(args, params.Limit, params.GetOffset())
+
+	// 5. Ejecutar la consulta final
+	rows, err := r.db.Query(ctx, baseQuery, args...)
+	if err != nil {
+		return nil, errors.New("error obteniendo los artistas")
+	}
+	defer rows.Close()
+
+	var artists []domain.Artist
+	for rows.Next() {
+		var a domain.Artist
+		err := rows.Scan(&a.ID, &a.Name, &a.Genre, &a.Country, &a.Bio, &a.ImageURL, &a.CreatedAt, &a.UpdatedAt)
+		if err != nil {
+			return nil, errors.New("error escaneando artista")
+		}
+		artists = append(artists, a)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, errors.New("error iterando las filas")
+	}
+
+	// 6. Retornar la estructura genérica armada
+	if artists == nil {
+		artists = []domain.Artist{} // Evitar null en JSON
+	}
+	return domain.NewPaginatedResult(artists, totalItems, params.Page, params.Limit), nil
 }
 
 // 3. Update

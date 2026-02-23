@@ -2,19 +2,20 @@ package domain
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/IsaacEspinoza91/Song-Manager/pkg/validation"
 )
+
+// MODELOS
 
 type Artist struct {
 	ID        int64      `json:"id"`
 	Name      string     `json:"name"`
 	Genre     string     `json:"genre"`
 	Country   string     `json:"country"`
-	Bio       *string    `json:"bio,omitempty"` // Puntero puede ser nulo
-	ImageURL  *string    `json:"image_url,omitempty"`
+	Bio       *string    `json:"bio"` // Puntero puede ser nulo
+	ImageURL  *string    `json:"image_url"`
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`
 	DeletedAt *time.Time `json:"deleted_at,omitempty"`
@@ -31,22 +32,14 @@ type ArtistInput struct {
 	ImageURL *string `json:"image_url"`
 }
 
-type ArtistRepository interface {
-	Create(ctx context.Context, input *ArtistInput) (*Artist, error)
-	Update(ctx context.Context, id int64, input *ArtistInput) (*Artist, error)
-	GetAll(ctx context.Context) ([]Artist, error)
-	GetByID(ctx context.Context, id int64) (*Artist, error)
-	Count(ctx context.Context) (int64, error)
-	Delete(ctx context.Context, id int64) error
+// Contiene los campos opcionales para buscar artistas
+type ArtistFilter struct {
+	Name    string
+	Genre   string
+	Country string
 }
 
-type ArtistService interface {
-	Create(ctx context.Context, input *ArtistInput) (*Artist, error)
-	Update(ctx context.Context, id int64, input *ArtistInput) (*Artist, error)
-	GetAll(ctx context.Context) ([]Artist, error)
-	GetByID(ctx context.Context, id int64) (*Artist, error)
-	Delete(ctx context.Context, id int64) error
-}
+// VALIDACIONES Y LIMPIEZA
 
 func (input *ArtistInput) Sanitize() {
 	// En caso de ser nulos, go asigna valor default del tipo
@@ -59,16 +52,52 @@ func (input *ArtistInput) Sanitize() {
 	input.ImageURL = validation.SanitizeOpcionalString(input.ImageURL)
 }
 
+// ValidationError mapa personalizado para acumular errores por campo
+type ValidationError map[string]string
+
+// Implementamos la interfaz 'error' nativa de Go
+// para que ValidationError pueda ser retornado como un error normal
+func (e ValidationError) Error() string {
+	return "errores de validación en los datos de entrada"
+}
+
 func (input *ArtistInput) Validate() error {
 	input.Sanitize()
+	errs := make(ValidationError) // Crea mapa para acum errores
+
 	if input.Name == "" {
-		return errors.New("el nombre del artista es obligatorio")
+		errs["name"] = "el nombre es obligatorio"
 	}
 	if input.Genre == "" {
-		return errors.New("el género es obligatorio")
+		errs["genre"] = "el género es obligatorio"
 	}
 	if input.Country == "" {
-		return errors.New("el país es obligatorio")
+		errs["country"] = "el país es obligatorio"
+	}
+
+	// Si el mapa tiene elementos, significa que hubo errores
+	if len(errs) > 0 {
+		return errs // Retornamos el mapa de errores
 	}
 	return nil
+}
+
+// INTERFACES
+
+type ArtistRepository interface {
+	Create(ctx context.Context, input *ArtistInput) (*Artist, error)
+	Update(ctx context.Context, id int64, input *ArtistInput) (*Artist, error)
+	GetAll(ctx context.Context) ([]Artist, error)
+	GetAllPaginated(ctx context.Context, filter ArtistFilter, params PaginationParams) (*PaginatedResult[Artist], error)
+	GetByID(ctx context.Context, id int64) (*Artist, error)
+	Delete(ctx context.Context, id int64) error
+}
+
+type ArtistService interface {
+	Create(ctx context.Context, input *ArtistInput) (*Artist, error)
+	Update(ctx context.Context, id int64, input *ArtistInput) (*Artist, error)
+	GetAll(ctx context.Context) ([]Artist, error)
+	GetAllPaginated(ctx context.Context, filter ArtistFilter, params PaginationParams) (*PaginatedResult[Artist], error)
+	GetByID(ctx context.Context, id int64) (*Artist, error)
+	Delete(ctx context.Context, id int64) error
 }

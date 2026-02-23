@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -21,7 +22,7 @@ func (h *ArtistHandler) Create(w http.ResponseWriter, r *http.Request) {
 	// 1. Decodificar el JSON entrante
 	var input domain.ArtistInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, "JSON inválido", http.StatusBadRequest)
+		WriteError(w, http.StatusBadRequest, "Formato JSON inválido", err.Error())
 		return
 	}
 
@@ -29,15 +30,20 @@ func (h *ArtistHandler) Create(w http.ResponseWriter, r *http.Request) {
 	// Contexto (r.Context()) viaja desde aquí hasta la base de datos
 	artist, err := h.service.Create(r.Context(), &input)
 	if err != nil {
-		// Si el servicio devuelve un error (ej. validación fallida), responder 400
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		// Verificamos si el error es de tipo ValidationError (acumulación de errores)
+		var valErrs domain.ValidationError
+		if errors.As(err, &valErrs) {
+			// Si lo es, pasamos el mapa completo a los Details
+			WriteError(w, http.StatusBadRequest, "Datos de entrada inválidos", valErrs)
+			return
+		}
+
+		// cualquier otro error (ej: base de datos caida), responder 400
+		WriteError(w, http.StatusBadRequest, "No se pudo crear el artista", err.Error())
 		return
 	}
 
-	// 3. Responder con éxito (201 Created) y el objeto creado en JSON
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(artist)
+	WriteJSON(w, http.StatusCreated, artist) // 201 Created
 }
 
 // GET ALL (GET /artists)
@@ -45,14 +51,16 @@ func (h *ArtistHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	artists, err := h.service.GetAll(r.Context())
 	if err != nil {
 		// Si falla la base de datos, es un error interno del servidor (500)
-		http.Error(w, "Error interno obteniendo artistas", http.StatusInternalServerError)
+		WriteError(w, http.StatusInternalServerError, "Error interno obteniendo artistas", err.Error())
 		return
 	}
 
-	// Responder con éxito (200 OK)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(artists)
+	// Si no hay artistas, devolver array vacio en vez de nil
+	if artists == nil {
+		artists = []domain.Artist{}
+	}
+
+	WriteJSON(w, http.StatusOK, artists) // 200 OK
 }
 
 // GET ID (GET /artists/{id})
@@ -60,24 +68,55 @@ func (h *ArtistHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	idString := r.PathValue("id")
 	id, err := strconv.ParseInt(idString, 10, 64)
 	if err != nil || id <= 0 {
-		http.Error(w, "El ID de la URL debe ser un número válido", http.StatusBadRequest)
+		WriteError(w, http.StatusBadRequest, "El ID de la URL debe ser un número entero válido mayor a 0", nil)
 		return
 	}
 
 	artist, err := h.service.GetByID(r.Context(), id)
 	if err != nil {
 		if err.Error() == "artista no encontrado" {
-			http.Error(w, err.Error(), http.StatusNotFound) // 404
+			WriteError(w, http.StatusNotFound, err.Error(), nil) // 404
 			return
 		}
 
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		WriteError(w, http.StatusInternalServerError, "Error al buscar el artista", err.Error()) // 500
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(artist)
+	WriteJSON(w, http.StatusOK, artist) // 200 OK
+}
+
+// GET ALL PAG (GET /artists/pag?page=2&limit=5&genre=rock&country=chile)
+func (h *ArtistHandler) GetAllPaginated(w http.ResponseWriter, r *http.Request) {
+	// Extraer query params
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page <= 0 {
+		page = 1
+	}
+
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit <= 0 {
+		limit = 10 // valor default
+	}
+	pagination := domain.PaginationParams{
+		Page:  page,
+		Limit: limit,
+	}
+
+	filter := domain.ArtistFilter{
+		Name:    r.URL.Query().Get("name"),
+		Genre:   r.URL.Query().Get("genre"),
+		Country: r.URL.Query().Get("country"),
+	}
+
+	// Llamar servicio
+	paginatedData, err := h.service.GetAllPaginated(r.Context(), filter, pagination)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "Error obteniendo la lista de artistas", err.Error())
+		return
+	}
+
+	WriteJSON(w, http.StatusOK, paginatedData) // 200
 }
 
 // UPDATE (PUT /artists/{id})
@@ -88,33 +127,38 @@ func (h *ArtistHandler) Update(w http.ResponseWriter, r *http.Request) {
 	// Convertir string a int64 (base 10, 64 bits)
 	id, err := strconv.ParseInt(idString, 10, 64)
 	if err != nil || id <= 0 {
-		http.Error(w, "El ID de la URL debe ser un número válido", http.StatusBadRequest)
+		WriteError(w, http.StatusBadRequest, "El ID de la URL debe ser un número entero válido mayor a 0", nil)
 		return
 	}
 
 	// Decodificar el JSON entrante al DTO (ArtistInput)
 	var input domain.ArtistInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, "Formato JSON inválido", http.StatusBadRequest)
+		WriteError(w, http.StatusBadRequest, "Formato JSON inválido", err.Error())
 		return
 	}
 
 	// Pasar el ID y los datos a la capa de Servicio
 	artist, err := h.service.Update(r.Context(), id, &input)
 	if err != nil {
+		// Evaluar si es error de validación de campos
+		var valErrs domain.ValidationError
+		if errors.As(err, &valErrs) {
+			WriteError(w, http.StatusBadRequest, "Datos de actualización inválidos", valErrs)
+			return
+		}
+
 		// Caso error fue porque no se encontró el artista
 		if err.Error() == "artista no encontrado" {
-			http.Error(w, err.Error(), http.StatusNotFound) // 404
+			WriteError(w, http.StatusNotFound, err.Error(), nil) // 404
 			return
 		}
 		// Cualquier otro error de validación o base de datos
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		WriteError(w, http.StatusInternalServerError, "Error actualizando al artista", err.Error()) // 500
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK) // 200 OK
-	json.NewEncoder(w).Encode(artist)
+	WriteJSON(w, http.StatusOK, artist) // 200 OK
 }
 
 // DELETE (DELETE /artists/{id})
@@ -123,7 +167,7 @@ func (h *ArtistHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	idString := r.PathValue("id")
 	id, err := strconv.ParseInt(idString, 10, 64)
 	if err != nil || id <= 0 {
-		http.Error(w, "El ID de la URL debe ser un número válido", http.StatusBadRequest)
+		WriteError(w, http.StatusBadRequest, "El ID de la URL debe ser un número entero válido mayor a 0", nil)
 		return
 	}
 
@@ -131,14 +175,14 @@ func (h *ArtistHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	err = h.service.Delete(r.Context(), id)
 	if err != nil {
 		if err.Error() == "artista no encontrado" {
-			http.Error(w, err.Error(), http.StatusNotFound) // 404
+			WriteError(w, http.StatusNotFound, err.Error(), nil) // 404
 			return
 		}
-		http.Error(w, "Error al eliminar el artista", http.StatusInternalServerError)
+		WriteError(w, http.StatusInternalServerError, "Error al eliminar el artista", err.Error()) // 500
 		return
 	}
 
 	// Responder al frontend indicando exito, sin contenido en el body
 	// 204 No Content es el código HTTP estándar para un DELETE exitoso
-	w.WriteHeader(http.StatusNoContent)
+	WriteNoContent(w)
 }

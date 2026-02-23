@@ -6,30 +6,38 @@ import (
 )
 
 // estructura estandar para que el frontend maneje errores
-type ErrorResponse struct {
-	Error   string `json:"error"`
-	Details string `json:"details,omitempty"` // omitempty hace que no aparezca en el JSON si está vacío
+type APIError struct {
+	// Código HTTP (ej. 400, 404, 500)
+	Status int `json:"status"`
+	// Mensaje amigable para el usuario
+	Message string `json:"message"`
+	// Details contiene información técnica o validaciones específicas (opcional)
+	Details interface{} `json:"details,omitempty"`
 }
 
-// WriteError es un helper para enviar respuestas de error en formato JSON
-func WriteJSONError(w http.ResponseWriter, status int, message string) {
+// WriteError es un helper para estandarizar la respuesta de errores
+func WriteError(w http.ResponseWriter, status int, message string, details interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 
-	errResp := ErrorResponse{
-		Error: message,
+	errResp := APIError{
+		Status:  status,
+		Message: message,
+		Details: details,
 	}
 
 	json.NewEncoder(w).Encode(errResp)
 }
 
 // WriteJSON es un helper para enviar respuestas exitosas
-func WriteJSON(w http.ResponseWriter, status int, data any) {
+func WriteJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(data)
+}
 
-	// Si data es nil (ej. en un DELETE), no codificamos nada
-	if data != nil {
-		json.NewEncoder(w).Encode(data)
-	}
+// WriteNoContent se usa específicamente para respuestas 204 (como un DELETE exitoso)
+// Solo devolver codigo 204 No Content, el cuerpo debe estar vacio
+func WriteNoContent(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusNoContent)
 }

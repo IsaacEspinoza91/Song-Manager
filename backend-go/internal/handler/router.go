@@ -15,7 +15,8 @@ func NewRouter(artistService domain.ArtistService) http.Handler {
 
 	// 2. Registramos las rutas (Requiere Go 1.22+)
 	mux.HandleFunc("POST /artists", artistHandler.Create)
-	mux.HandleFunc("GET /artists", artistHandler.GetAll)
+	mux.HandleFunc("GET /artists/all", artistHandler.GetAll)
+	mux.HandleFunc("GET /artists", artistHandler.GetAllPaginated)
 	mux.HandleFunc("GET /artists/{id}", artistHandler.GetByID)
 	mux.HandleFunc("PUT /artists/{id}", artistHandler.Update)
 	mux.HandleFunc("DELETE /artists/{id}", artistHandler.Delete)

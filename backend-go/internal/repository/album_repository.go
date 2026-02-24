@@ -96,15 +96,15 @@ func (r *albumRepository) AddTrack(ctx context.Context, albumID int64, input *do
 			if pgErr.Code == "23505" {
 				// Evaluamos qué restricción falló
 				if pgErr.ConstraintName == "tracks_album_id_track_number_key" {
-					return errors.New("este número de pista ya está ocupado en el álbum")
+					return domain.ErrTrackAlreadyExists
 				}
 				if pgErr.ConstraintName == "tracks_pkey" {
-					return errors.New("esta canción ya existe en este álbum")
+					return domain.ErrSongAlreadyInAlbum
 				}
 			}
 			// Código 23503: foreign_key_violation (song_id no existe)
 			if pgErr.Code == "23503" {
-				return errors.New("la canción indicada no existe en la base de datos")
+				return domain.ErrSongNotInDB
 			}
 		}
 
@@ -122,7 +122,7 @@ func (r *albumRepository) RemoveTrack(ctx context.Context, albumID int64, songID
 		return fmt.Errorf("error eliminando el track %d del álbum %d: %w", songID, albumID, err)
 	}
 	if res.RowsAffected() == 0 {
-		return errors.New("track no encontrado en este álbum")
+		return domain.ErrTrackNotFound
 	}
 	return nil
 }
@@ -147,7 +147,7 @@ func (r *albumRepository) GetByID(ctx context.Context, id int64) (*domain.Album,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, errors.New("álbum no encontrado")
+			return nil, domain.ErrAlbumNotFound
 		}
 		return nil, fmt.Errorf("error obteniendo el álbum principal: %w", err)
 	}
@@ -418,7 +418,7 @@ func (r *albumRepository) Update(ctx context.Context, albumID int64, input *doma
 		return nil, fmt.Errorf("error actualizando los datos del album: %w", err)
 	}
 	if res.RowsAffected() == 0 { // Si no afecta filas es porque la cancion no existe o fue borrada
-		return nil, errors.New("álbum no encontrado")
+		return nil, domain.ErrAlbumNotFound
 	}
 
 	// Limpiar relaciones antiguas
@@ -477,7 +477,7 @@ func (r *albumRepository) Delete(ctx context.Context, id int64) error {
 		return fmt.Errorf("error eliminando al álbum ID %d: %w", id, err)
 	}
 	if res.RowsAffected() == 0 {
-		return errors.New("álbum no encontrada")
+		return domain.ErrAlbumNotFound
 	}
 	return nil
 }

@@ -81,7 +81,7 @@ func (h *ArtistHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 
 	artist, err := h.service.GetByID(r.Context(), id)
 	if err != nil {
-		if err.Error() == "artista no encontrado" {
+		if errors.Is(err, domain.ErrArtistNotFound) {
 			WriteError(w, http.StatusNotFound, err.Error(), nil) // 404
 			return
 		}
@@ -161,7 +161,7 @@ func (h *ArtistHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Caso error fue porque no se encontró el artista
-		if err.Error() == "artista no encontrado" {
+		if errors.Is(err, domain.ErrArtistNotFound){
 			WriteError(w, http.StatusNotFound, err.Error(), nil) // 404
 			return
 		}
@@ -192,7 +192,7 @@ func (h *ArtistHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	// Llamar al servicio. Soft Delete
 	err = h.service.Delete(r.Context(), id)
 	if err != nil {
-		if err.Error() == "artista no encontrado" {
+		if errors.Is(err, domain.ErrArtistNotFound) {
 			WriteError(w, http.StatusNotFound, err.Error(), nil) // 404
 			return
 		}

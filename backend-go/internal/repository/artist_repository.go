@@ -59,7 +59,7 @@ func (r *artistRepository) GetByID(ctx context.Context, id int64) (*domain.Artis
 	err := r.db.QueryRow(ctx, query, id).Scan(&a.ID, &a.Name, &a.Genre, &a.Country, &a.Bio, &a.ImageURL, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, errors.New("artista no encontrado")
+			return nil, domain.ErrArtistNotFound
 		}
 		return nil, fmt.Errorf("error obteniendo al artista: %w", err)
 	}
@@ -220,7 +220,7 @@ func (r *artistRepository) Update(ctx context.Context, id int64, input *domain.A
 		)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, errors.New("artista no encontrado")
+			return nil, domain.ErrArtistNotFound
 		}
 		return nil, fmt.Errorf("error actualizando al artista ID %d: %w", id, err)
 	}
@@ -235,7 +235,7 @@ func (r *artistRepository) Delete(ctx context.Context, id int64) error {
 		return fmt.Errorf("error eliminando al artista ID %d: %w", id, err)
 	}
 	if res.RowsAffected() == 0 {
-		return errors.New("artista no encontrado")
+		return domain.ErrArtistNotFound
 	}
 	return nil
 }

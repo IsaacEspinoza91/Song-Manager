@@ -58,7 +58,7 @@ func (h *AlbumHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 
 	album, err := h.service.GetByID(r.Context(), id)
 	if err != nil {
-		if err.Error() == "álbum no encontrado" {
+		if errors.Is(err, domain.ErrAlbumNotFound) {
 			WriteError(w, http.StatusNotFound, err.Error(), nil) // 404
 			return
 		}
@@ -160,7 +160,7 @@ func (h *AlbumHandler) Update(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err.Error() == "álbum no encontrado" {
+		if errors.Is(err, domain.ErrAlbumNotFound) {
 			WriteError(w, http.StatusNotFound, err.Error(), nil) // 404
 			return
 		}
@@ -188,7 +188,7 @@ func (h *AlbumHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.Delete(r.Context(), id); err != nil {
-		if err.Error() == "álbum no encontrado" {
+		if errors.Is(err, domain.ErrAlbumNotFound) {
 			WriteError(w, http.StatusNotFound, err.Error(), nil) // 404
 			return
 		}
@@ -228,16 +228,14 @@ func (h *AlbumHandler) AddTrack(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Manejo de Conflictos (409) atrapados desde la base de datos
-		errMsg := err.Error()
-		if errMsg == "este número de pista ya está ocupado en el álbum" ||
-			errMsg == "esta canción ya existe en este álbum" {
-			WriteError(w, http.StatusConflict, errMsg, nil) // 409 Conflict
+		// Manejo de Conflictos (409) atrapados desde la base de datos, con Errores Centinela
+		if errors.Is(err, domain.ErrTrackAlreadyExists) || errors.Is(err, domain.ErrSongAlreadyInAlbum) {
+			WriteError(w, http.StatusConflict, err.Error(), nil) // 409 Conflict
 			return
 		}
-
-		if errMsg == "la canción indicada no existe en la base de datos" {
-			WriteError(w, http.StatusBadRequest, errMsg, nil) // 400
+		// Manejo de Bad Request (400)
+		if errors.Is(err, domain.ErrSongNotInDB) {
+			WriteError(w, http.StatusBadRequest, err.Error(), nil) // 400 Bad Request
 			return
 		}
 
@@ -262,7 +260,7 @@ func (h *AlbumHandler) RemoveTrack(w http.ResponseWriter, r *http.Request) {
 
 	err = h.service.RemoveTrack(r.Context(), albumID, songID)
 	if err != nil {
-		if err.Error() == "track no encontrado en este álbum" {
+		if errors.Is(err, domain.ErrTrackNotFound) {
 			WriteError(w, http.StatusNotFound, err.Error(), nil) // 404
 			return
 		}

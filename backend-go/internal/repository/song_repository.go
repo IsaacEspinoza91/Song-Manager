@@ -89,7 +89,7 @@ func (r *songRepository) GetByID(ctx context.Context, id int64) (*domain.Song, e
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, errors.New("canción no encontrada")
+			return nil, domain.ErrSongNotFound
 		}
 		return nil, fmt.Errorf("error obteniendo la canción: %w", err)
 	}
@@ -332,7 +332,7 @@ func (r *songRepository) Update(ctx context.Context, id int64, input *domain.Son
 
 	// Si no se afectó ninguna fila, es porque el ID no existe o la canción fue borrada lógicamente
 	if res.RowsAffected() == 0 {
-		return nil, errors.New("canción no encontrada")
+		return nil, domain.ErrSongNotFound
 	}
 
 	// 2. Limpiar relaciones antiguas
@@ -379,7 +379,7 @@ func (r *songRepository) Delete(ctx context.Context, id int64) error {
 		return fmt.Errorf("error eliminando a la canción ID %d: %w", id, err)
 	}
 	if res.RowsAffected() == 0 {
-		return errors.New("canción no encontrada")
+		return domain.ErrSongNotFound
 	}
 	return nil
 }

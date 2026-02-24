@@ -60,7 +60,7 @@ func (h *SongHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 
 	song, err := h.service.GetByID(r.Context(), id)
 	if err != nil {
-		if err.Error() == "canción no encontrada" {
+		if errors.Is(err, domain.ErrSongNotFound) {
 			WriteError(w, http.StatusNotFound, err.Error(), nil) // 404
 			return
 		}
@@ -152,7 +152,7 @@ func (h *SongHandler) Update(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err.Error() == "canción no encontrada" {
+		if errors.Is(err, domain.ErrSongNotFound) {
 			WriteError(w, http.StatusNotFound, err.Error(), nil) // 404
 			return
 		}
@@ -183,7 +183,7 @@ func (h *SongHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	err = h.service.Delete(r.Context(), id)
 	if err != nil {
-		if err.Error() == "canción no encontrada" {
+		if errors.Is(err, domain.ErrSongNotFound){
 			WriteError(w, http.StatusNotFound, err.Error(), nil) // 404
 			return
 		}

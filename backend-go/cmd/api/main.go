@@ -27,13 +27,15 @@ func main() {
 	// Crear repositorios (Inyectar DB)
 	artistRepo := repository.NewArtistRepository(dbPool)
 	songRepo := repository.NewSongRepository(dbPool)
+	albumRepo := repository.NewAlbumRepository(dbPool)
 
 	// Crear servicios (Inyectar repo)
 	artistService := service.NewArtistService(artistRepo)
 	songService := service.NewSongService(songRepo)
+	albumService := service.NewAlbumService(albumRepo)
 
 	// Crar enrutador (Inyectar services)
-	router := handler.NewRouter(artistService, songService)
+	router := handler.NewRouter(artistService, songService, albumService)
 
 	// Levantar Server
 	log.Println("Servidor corriendo en el puerto 8080...")

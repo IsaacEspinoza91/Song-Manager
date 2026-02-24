@@ -88,7 +88,6 @@ func (r *albumRepository) Create(ctx context.Context, input *domain.AlbumInput) 
 	return fullAlbum, nil
 }
 
-// POST /albums/{id}/tracks
 func (r *albumRepository) AddTrack(ctx context.Context, albumID int64, input *domain.TrackInput) error {
 	query := `
 		INSERT INTO tracks (album_id, song_id, track_number)
@@ -121,7 +120,6 @@ func (r *albumRepository) AddTrack(ctx context.Context, albumID int64, input *do
 	return nil
 }
 
-// DELETE /albums/{id}/tracks/{song_id}
 func (r *albumRepository) RemoveTrack(ctx context.Context, albumID int64, songID int64) error {
 	query := `DELETE FROM tracks WHERE album_id = $1 AND song_id = $2`
 
@@ -407,8 +405,8 @@ func (r *albumRepository) GetAlbumsByArtistID(ctx context.Context, artistID int6
 	return albums, nil
 }
 
-// Editar Albumn con artistas (no tracks)
-// PUT /albums/{id}
+// Editar Album con artistas y tracks
+// Deberia solo editar album con artistas. Los tracks se editan en AddTrack y RemoveTrack
 func (r *albumRepository) Update(ctx context.Context, albumID int64, input *domain.AlbumInput) (*domain.Album, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -435,11 +433,6 @@ func (r *albumRepository) Update(ctx context.Context, albumID int64, input *doma
 	if err != nil {
 		return nil, fmt.Errorf("error limpiando relaciones antiguas de artitas del álbum: %w", err)
 	}
-	deletedTracksQuery := `DELETE FROM tracks WHERE album_id = $1`
-	_, err = tx.Exec(ctx, deletedTracksQuery, albumID)
-	if err != nil {
-		return nil, fmt.Errorf("error limpiando relaciones antiguas de tracks del álbum: %w", err)
-	}
 
 	// Insertar nuevas relaciones
 	if len(input.Artists) > 0 {
@@ -455,22 +448,6 @@ func (r *albumRepository) Update(ctx context.Context, albumID int64, input *doma
 					return nil, domain.ErrArtistNotFound
 				}
 				return nil, fmt.Errorf("error insertando nueva relación con artista ID %d: %w", a.ArtistID, err)
-			}
-		}
-	}
-	if len(input.Tracks) > 0 {
-		insertTracksQuery := `
-			INSERT INTO tracks (album_id, song_id, track_number)
-			VALUES ($1, $2, $3)
-		`
-		for _, t := range input.Tracks {
-			_, err := tx.Exec(ctx, insertTracksQuery, albumID, t.SongID, t.TrackNumber)
-			if err != nil {
-				var pgErr *pgconn.PgError
-				if errors.As(err, &pgErr) && pgErr.Code == "23503" {
-					return nil, domain.ErrSongNotFound
-				}
-				return nil, fmt.Errorf("error insertando nueva relación con concion ID %d: %w", t.SongID, err)
 			}
 		}
 	}

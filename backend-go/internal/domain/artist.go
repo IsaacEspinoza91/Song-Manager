@@ -40,6 +40,11 @@ type ArtistFilter struct {
 }
 
 // VALIDACIONES Y LIMPIEZA
+func (input *ArtistFilter) Sanitize() {
+	input.Name = validation.SanitizeString(input.Name)
+	input.Genre = validation.SanitizeString(input.Genre)
+	input.Country = validation.SanitizeString(input.Country)
+}
 
 func (input *ArtistInput) Sanitize() {
 	// En caso de ser nulos, go asigna valor default del tipo

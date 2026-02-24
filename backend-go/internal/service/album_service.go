@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 
 	"github.com/IsaacEspinoza91/Song-Manager/internal/domain"
 )
@@ -32,6 +31,7 @@ func (s *albumService) GetByID(ctx context.Context, albumID int64) (*domain.Albu
 }
 
 func (s *albumService) GetAllPaginated(ctx context.Context, filter domain.AlbumFilter, params domain.PaginationParams) (*domain.PaginatedResult[domain.Album], error) {
+	filter.Sanitize()
 	return s.repo.GetAllPaginated(ctx, filter, params)
 }
 
@@ -69,8 +69,11 @@ func (s *albumService) AddTrack(ctx context.Context, albumID int64, input *domai
 }
 
 func (s *albumService) RemoveTrack(ctx context.Context, albumID int64, songID int64) error {
-	if albumID <= 0 || songID <= 0 {
-		return errors.New("IDs inválidos")
+	if albumID <= 0 {
+		return domain.ErrAlbumIDInvalid
+	}
+	if songID <= 0 {
+		return domain.ErrSongIDInvalid
 	}
 
 	return s.repo.RemoveTrack(ctx, albumID, songID)

@@ -179,10 +179,6 @@ func (h *AlbumHandler) Update(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, http.StatusBadRequest, err.Error(), nil) // 400
 			return
 		}
-		if errors.Is(err, domain.ErrSongNotFound) {
-			WriteError(w, http.StatusBadRequest, err.Error(), nil) // 400
-			return
-		}
 
 		log.Printf("[ERROR INTERNO] PUT /albums/%d: %v\n", id, err)
 		WriteError(w, http.StatusInternalServerError, "Error actualizando el álbum", nil) // 500

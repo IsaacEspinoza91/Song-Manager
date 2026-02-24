@@ -51,6 +51,7 @@ func (s *artistService) GetAll(ctx context.Context) ([]domain.Artist, error) {
 }
 
 func (s *artistService) GetAllPaginated(ctx context.Context, filter domain.ArtistFilter, params domain.PaginationParams) (*domain.PaginatedResult[domain.Artist], error) {
+	filter.Sanitize()
 	return s.repo.GetAllPaginated(ctx, filter, params)
 }
 

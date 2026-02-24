@@ -65,6 +65,13 @@ type AlbumFilter struct {
 	ArtistName string
 }
 
+// VALIDACIONES Y LIMPIEZA
+func (input *AlbumFilter) Sanitize() {
+	input.Title = validation.SanitizeString(input.Title)
+	input.Type = validation.SanitizeString(input.Type)
+	input.ArtistName = validation.SanitizeString(input.ArtistName)
+}
+
 func (input *AlbumInput) Sanitize() {
 	input.Title = validation.SanitizeString(input.Title)
 	input.ReleaseDate = validation.SanitizeString(input.ReleaseDate)

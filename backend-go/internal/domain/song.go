@@ -44,6 +44,11 @@ type SongFilter struct {
 }
 
 // VALIDACIONES
+func (input *SongFilter) Sanitize() {
+	input.Title = validation.SanitizeString(input.Title)
+	input.ArtistName = validation.SanitizeString(input.ArtistName)
+}
+
 func (input *SongInput) Sanitize() {
 	input.Title = validation.SanitizeString(input.Title)
 }

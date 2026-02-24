@@ -39,6 +39,7 @@ func (s *songService) GetAll(ctx context.Context) ([]domain.Song, error) {
 }
 
 func (s *songService) GetAllPaginated(ctx context.Context, filter domain.SongFilter, params domain.PaginationParams) (*domain.PaginatedResult[domain.Song], error) {
+	filter.Sanitize()
 	// Dentro de pagination.go se hacen validaciones de page y limit
 	return s.repo.GetAllPaginated(ctx, filter, params)
 }

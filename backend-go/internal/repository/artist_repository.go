@@ -135,26 +135,25 @@ func (r *artistRepository) GetAllPaginated(ctx context.Context, filter domain.Ar
 	// 2. Construir filtros dinámicamente
 	if filter.Name != "" {
 		// Agregamos la condición a ambas consultas
-		condition := fmt.Sprintf(" AND name %%> $%d", argID) // ILIKE ignora mayusculas o minusculas
+		// Uso de extensin pg_trgm para busqueda tolerante a errores (%), pero en Sprintf usamos %%
+		condition := fmt.Sprintf(" AND name %% $%d", argID)
 		baseQuery += condition
 		countQuery += condition
-
-		// Agregamos el valor envuelto en '%' para la búsqueda parcial
-		args = append(args, "%"+filter.Name+"%")
+		args = append(args, filter.Name)
 		argID++
 	}
 	if filter.Genre != "" {
-		condition := fmt.Sprintf(" AND genre %%> $%d", argID)
+		condition := fmt.Sprintf(" AND genre %% $%d", argID)
 		baseQuery += condition
 		countQuery += condition
-		args = append(args, "%"+filter.Genre+"%")
+		args = append(args, filter.Genre)
 		argID++
 	}
 	if filter.Country != "" {
-		condition := fmt.Sprintf(" AND country %%> $%d", argID)
+		condition := fmt.Sprintf(" AND country %% $%d", argID)
 		baseQuery += condition
 		countQuery += condition
-		args = append(args, "%"+filter.Country+"%")
+		args = append(args, filter.Country)
 		argID++
 	}
 
@@ -244,6 +243,3 @@ func (r *artistRepository) Delete(ctx context.Context, id int64) error {
 // Para una operacion simple (1 query) no es necesario porque en si ya es una transaccion implicita
 
 // GetALL no pag deleted  SOLO ADMIN
-// Get pag
-// get pag con filtros  preguntar ia si es buena practica dar la opcion de seleccionar deleted o no
-// Get discos con canciones

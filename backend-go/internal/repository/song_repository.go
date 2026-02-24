@@ -7,6 +7,7 @@ import (
 
 	"github.com/IsaacEspinoza91/Song-Manager/internal/domain"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -50,6 +51,13 @@ func (r *songRepository) Create(ctx context.Context, input *domain.SongInput) (*
 		for _, a := range input.Artists {
 			_, err := tx.Exec(ctx, queryArtistSong, songID, a.ArtistID, a.Role)
 			if err != nil {
+				// Interceptar error de Llave Foránea
+				var pgErr *pgconn.PgError
+				if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+					// Si falla la llave foránea al insertar aquí, es porque el artista no existe. La cancion existe recien
+					return nil, domain.ErrArtistNotFound
+				}
+
 				// Al salir sin hacer Commit, el defer ejecuta el Rollback.
 				return nil, fmt.Errorf("error asociando el artista ID %d a la canción: %w", a.ArtistID, err)
 			}
@@ -309,8 +317,7 @@ func (r *songRepository) GetAllPaginated(ctx context.Context, filter domain.Song
 }
 
 // UPDATE
-// PUT clasico, actualiza todo slos datos de la tabla principal, elimina las relaciones existentes
-// y las inserta de nuevo.
+// PUT clasico, actualiza todo slos datos de la tabla principal, elimina las relaciones existentes y las inserta de nuevo.
 func (r *songRepository) Update(ctx context.Context, id int64, input *domain.SongInput) (*domain.Song, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -351,7 +358,11 @@ func (r *songRepository) Update(ctx context.Context, id int64, input *domain.Son
 		for _, a := range input.Artists {
 			_, err := tx.Exec(ctx, insertRelQuery, id, a.ArtistID, a.Role)
 			if err != nil {
-				// falta caso retornar error id de artista no existe
+				var pgErr *pgconn.PgError
+				if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+					return nil, domain.ErrArtistNotFound
+				}
+
 				return nil, fmt.Errorf("error insertando nueva relación con artista ID %d: %w", a.ArtistID, err)
 			}
 		}

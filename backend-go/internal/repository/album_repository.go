@@ -48,6 +48,10 @@ func (r *albumRepository) Create(ctx context.Context, input *domain.AlbumInput) 
 		for _, a := range input.Artists {
 			_, err := tx.Exec(ctx, queryAlbumArtist, albumID, a.ArtistID, a.IsPrimary)
 			if err != nil {
+				var pgErr *pgconn.PgError
+				if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+					return nil, domain.ErrArtistNotFound
+				}
 				return nil, fmt.Errorf("error asociando el artista ID %d al album: %w", a.ArtistID, err)
 			}
 		}
@@ -62,6 +66,10 @@ func (r *albumRepository) Create(ctx context.Context, input *domain.AlbumInput) 
 		for _, t := range input.Tracks {
 			_, err := tx.Exec(ctx, queryTrack, albumID, t.SongID, t.TrackNumber)
 			if err != nil {
+				var pgErr *pgconn.PgError
+				if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+					return nil, domain.ErrSongNotFound
+				}
 				return nil, fmt.Errorf("error asociando la cancion ID %d como track %d: %w", t.SongID, t.TrackNumber, err)
 			}
 		}
@@ -442,6 +450,10 @@ func (r *albumRepository) Update(ctx context.Context, albumID int64, input *doma
 		for _, a := range input.Artists {
 			_, err := tx.Exec(ctx, insertArtistQuery, albumID, a.ArtistID, a.IsPrimary)
 			if err != nil {
+				var pgErr *pgconn.PgError
+				if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+					return nil, domain.ErrArtistNotFound
+				}
 				return nil, fmt.Errorf("error insertando nueva relación con artista ID %d: %w", a.ArtistID, err)
 			}
 		}
@@ -454,6 +466,10 @@ func (r *albumRepository) Update(ctx context.Context, albumID int64, input *doma
 		for _, t := range input.Tracks {
 			_, err := tx.Exec(ctx, insertTracksQuery, albumID, t.SongID, t.TrackNumber)
 			if err != nil {
+				var pgErr *pgconn.PgError
+				if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+					return nil, domain.ErrSongNotFound
+				}
 				return nil, fmt.Errorf("error insertando nueva relación con concion ID %d: %w", t.SongID, err)
 			}
 		}

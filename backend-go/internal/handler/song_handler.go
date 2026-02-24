@@ -29,15 +29,22 @@ func (h *SongHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	song, err := h.service.Create(r.Context(), &input)
 	if err != nil {
+		// Errores de validacion
 		var valErrs domain.ValidationError
 		if errors.As(err, &valErrs) {
 			WriteError(w, http.StatusBadRequest, "Datos de entrada inválidos", valErrs)
 			return
 		}
 
-		// if caso id artista no existe code 400 bad request
+		// Errores de Negocio / Relaciones
+		if errors.Is(err, domain.ErrArtistNotFound) {
+			WriteError(w, http.StatusBadRequest, err.Error(), nil)
+			return
+		}
 
-		WriteError(w, http.StatusInternalServerError, "No se pudo crear la cancion", err.Error())
+		// Errores Internos Críticos (Caída de BD, etc)
+		log.Printf("[ERROR INTERNO] POST /songs: %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Ocurrió un error inesperado al crear la canción", nil)
 		return
 	}
 
@@ -146,9 +153,16 @@ func (h *SongHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	song, err := h.service.Update(r.Context(), id, &input)
 	if err != nil {
+		// Errores de validacion
 		var valErrs domain.ValidationError
 		if errors.As(err, &valErrs) {
 			WriteError(w, http.StatusBadRequest, "Datos de actualización inválidos", valErrs)
+			return
+		}
+
+		// Errores de Negocio / Relaciones
+		if errors.Is(err, domain.ErrArtistNotFound) {
+			WriteError(w, http.StatusBadRequest, err.Error(), nil) // 400
 			return
 		}
 
@@ -156,8 +170,6 @@ func (h *SongHandler) Update(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, http.StatusNotFound, err.Error(), nil) // 404
 			return
 		}
-
-		// if caso id artista no existe code 400 bad request
 
 		log.Printf("[ERROR INTERNO en Handler] %v\n", err)
 		WriteError(w, http.StatusInternalServerError, "Error actualizando la cancion", nil) // 500
@@ -183,7 +195,7 @@ func (h *SongHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	err = h.service.Delete(r.Context(), id)
 	if err != nil {
-		if errors.Is(err, domain.ErrSongNotFound){
+		if errors.Is(err, domain.ErrSongNotFound) {
 			WriteError(w, http.StatusNotFound, err.Error(), nil) // 404
 			return
 		}

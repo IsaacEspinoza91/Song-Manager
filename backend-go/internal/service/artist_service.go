@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 
 	"github.com/IsaacEspinoza91/Song-Manager/internal/domain"
 )
@@ -36,7 +35,7 @@ func (s *artistService) Create(ctx context.Context, input *domain.ArtistInput) (
 // 2. Read
 func (s *artistService) GetByID(ctx context.Context, id int64) (*domain.Artist, error) {
 	if id <= 0 {
-		return nil, errors.New("ID de artista inválido")
+		return nil, domain.ErrArtistIDInvalid
 	}
 
 	artist, err := s.repo.GetByID(ctx, id)
@@ -62,7 +61,7 @@ func (s *artistService) Update(ctx context.Context, id int64, input *domain.Arti
 	}
 
 	if id <= 0 {
-		return nil, errors.New("ID de artista inválido")
+		return nil, domain.ErrArtistIDInvalid
 	}
 
 	artist, err := s.repo.Update(ctx, id, input)
@@ -76,7 +75,7 @@ func (s *artistService) Update(ctx context.Context, id int64, input *domain.Arti
 // 4. Delete
 func (s *artistService) Delete(ctx context.Context, id int64) error {
 	if id <= 0 {
-		return errors.New("ID de artista inválido")
+		return domain.ErrArtistIDInvalid
 	}
 	return s.repo.Delete(ctx, id)
 }

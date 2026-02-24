@@ -28,12 +28,21 @@ func (h *AlbumHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	album, err := h.service.Create(r.Context(), &input)
 	if err != nil {
+		// Errores de validacion
 		var valErrs domain.ValidationError
 		if errors.As(err, &valErrs) {
 			WriteError(w, http.StatusBadRequest, "Datos de entrada inválidos", valErrs)
 			return
 		}
-		// Casos id artista o id cancion no existe
+		// Errores de negocio / relaciones
+		if errors.Is(err, domain.ErrArtistNotFound) {
+			WriteError(w, http.StatusBadRequest, err.Error(), nil)
+			return
+		}
+		if errors.Is(err, domain.ErrSongNotFound) {
+			WriteError(w, http.StatusBadRequest, err.Error(), nil)
+			return
+		}
 
 		WriteError(w, http.StatusInternalServerError, "No se pudo crear la cancion", err.Error()) // 500
 		return
@@ -154,18 +163,26 @@ func (h *AlbumHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	album, err := h.service.Update(r.Context(), id, &input)
 	if err != nil {
+		// Errores de validacion
 		var valErrs domain.ValidationError
 		if errors.As(err, &valErrs) {
 			WriteError(w, http.StatusBadRequest, "Datos de actualización inválidos", valErrs)
 			return
 		}
 
+		// Errores de negocio / relaciones
 		if errors.Is(err, domain.ErrAlbumNotFound) {
 			WriteError(w, http.StatusNotFound, err.Error(), nil) // 404
 			return
 		}
-
-		// IF caso id artista no existe 400 bad request
+		if errors.Is(err, domain.ErrArtistNotFound) {
+			WriteError(w, http.StatusBadRequest, err.Error(), nil) // 400
+			return
+		}
+		if errors.Is(err, domain.ErrSongNotFound) {
+			WriteError(w, http.StatusBadRequest, err.Error(), nil) // 400
+			return
+		}
 
 		log.Printf("[ERROR INTERNO] PUT /albums/%d: %v\n", id, err)
 		WriteError(w, http.StatusInternalServerError, "Error actualizando el álbum", nil) // 500

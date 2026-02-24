@@ -26,7 +26,7 @@ func (s *albumService) Create(ctx context.Context, input *domain.AlbumInput) (*d
 // READ
 func (s *albumService) GetByID(ctx context.Context, albumID int64) (*domain.Album, error) {
 	if albumID <= 0 {
-		return nil, errors.New("ID de álbum inválido")
+		return nil, domain.ErrAlbumIDInvalid
 	}
 	return s.repo.GetByID(ctx, albumID)
 }
@@ -37,7 +37,7 @@ func (s *albumService) GetAllPaginated(ctx context.Context, filter domain.AlbumF
 
 func (s *albumService) GetAlbumsByArtistID(ctx context.Context, artistID int64) ([]domain.Album, error) {
 	if artistID <= 0 {
-		return nil, errors.New("ID de artista inválido")
+		return nil, domain.ErrArtistIDInvalid
 	}
 	return s.repo.GetAlbumsByArtistID(ctx, artistID)
 }
@@ -46,7 +46,7 @@ func (s *albumService) GetAlbumsByArtistID(ctx context.Context, artistID int64) 
 func (s *albumService) Update(ctx context.Context, id int64, input *domain.AlbumInput) (*domain.Album, error) {
 	// Validaciones defensivas
 	if id <= 0 {
-		return nil, errors.New("ID de álbum inválido")
+		return nil, domain.ErrAlbumIDInvalid
 	}
 	if err := input.Validate(); err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func (s *albumService) Update(ctx context.Context, id int64, input *domain.Album
 func (s *albumService) AddTrack(ctx context.Context, albumID int64, input *domain.TrackInput) error {
 	// Validaciones defensivas del ID y los datos de entrada
 	if albumID <= 0 {
-		return errors.New("ID de álbum inválido")
+		return domain.ErrAlbumIDInvalid
 	}
 	if err := input.Validate(); err != nil {
 		return err // Mapa de ValidationError
@@ -79,7 +79,7 @@ func (s *albumService) RemoveTrack(ctx context.Context, albumID int64, songID in
 // DELETE
 func (s *albumService) Delete(ctx context.Context, albumID int64) error {
 	if albumID <= 0 {
-		return errors.New("ID de álbum inválido")
+		return domain.ErrAlbumIDInvalid
 	}
 	return s.repo.Delete(ctx, albumID)
 }

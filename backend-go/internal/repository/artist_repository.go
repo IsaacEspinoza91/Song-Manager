@@ -135,7 +135,7 @@ func (r *artistRepository) GetAllPaginated(ctx context.Context, filter domain.Ar
 	// 2. Construir filtros dinámicamente
 	if filter.Name != "" {
 		// Agregamos la condición a ambas consultas
-		condition := fmt.Sprintf(" AND name ILIKE $%d", argID) // ILIKE ignora mayusculas o minusculas
+		condition := fmt.Sprintf(" AND name %%> $%d", argID) // ILIKE ignora mayusculas o minusculas
 		baseQuery += condition
 		countQuery += condition
 
@@ -144,14 +144,14 @@ func (r *artistRepository) GetAllPaginated(ctx context.Context, filter domain.Ar
 		argID++
 	}
 	if filter.Genre != "" {
-		condition := fmt.Sprintf(" AND genre ILIKE $%d", argID)
+		condition := fmt.Sprintf(" AND genre %%> $%d", argID)
 		baseQuery += condition
 		countQuery += condition
 		args = append(args, "%"+filter.Genre+"%")
 		argID++
 	}
 	if filter.Country != "" {
-		condition := fmt.Sprintf(" AND country ILIKE $%d", argID)
+		condition := fmt.Sprintf(" AND country %%> $%d", argID)
 		baseQuery += condition
 		countQuery += condition
 		args = append(args, "%"+filter.Country+"%")

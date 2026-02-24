@@ -219,7 +219,7 @@ func (r *songRepository) GetAllPaginated(ctx context.Context, filter domain.Song
 
 	// Busqueda parcial nombre cancion
 	if filter.Title != "" {
-		condition := fmt.Sprintf(" AND title ILIKE $%d", argID)
+		condition := fmt.Sprintf(" AND title %%> $%d", argID)
 		baseQuery += condition
 		countQuery += condition
 		args = append(args, "%"+filter.Title+"%")
@@ -239,7 +239,7 @@ func (r *songRepository) GetAllPaginated(ctx context.Context, filter domain.Song
 			SELECT asg.song_id 
 			FROM song_artists asg 
 			INNER JOIN artists a ON asg.artist_id = a.id 
-			WHERE a.name ILIKE $%d AND a.deleted_at IS NULL
+			WHERE a.name %%> $%d AND a.deleted_at IS NULL
 		)`, argID)
 
 		baseQuery += condition

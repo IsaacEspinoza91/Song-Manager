@@ -15,6 +15,11 @@ type APIError struct {
 	Details interface{} `json:"details,omitempty"`
 }
 
+type InfoResponse struct {
+	Status  int    `json:"status"`
+	Message string `json:"message"`
+}
+
 // WriteError es un helper para estandarizar la respuesta de errores
 func WriteError(w http.ResponseWriter, status int, message string, details interface{}) {
 	w.Header().Set("Content-Type", "application/json")
@@ -34,6 +39,18 @@ func WriteJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(data)
+}
+
+// Helper para respuestas con codigo y mensaje
+func WriteMessageJSON(w http.ResponseWriter, status int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	response := InfoResponse{
+		Status:  status,
+		Message: message,
+	}
+
+	json.NewEncoder(w).Encode(response)
 }
 
 // WriteNoContent se usa específicamente para respuestas 204 (como un DELETE exitoso)

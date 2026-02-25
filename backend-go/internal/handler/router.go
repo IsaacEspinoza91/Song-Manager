@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/IsaacEspinoza91/Song-Manager/internal/domain"
+	"github.com/IsaacEspinoza91/Song-Manager/internal/middleware"
 )
 
 // NewRouter recibe TODOS los servicios y retorna un http.Handler listo para usar
@@ -15,7 +16,7 @@ func NewRouter(artistService domain.ArtistService, songService domain.SongServic
 	songHandler := NewSongHandler(songService)
 	albumHandler := NewAlbumHandler(albumService)
 
-	// 2. Registramos las rutas (Requiere Go 1.22+)
+	// Registramos las rutas (Requiere Go 1.22+)
 	mux.HandleFunc("POST /artists", artistHandler.Create)
 	mux.HandleFunc("GET /artists/all", artistHandler.GetAll)
 	mux.HandleFunc("GET /artists", artistHandler.GetAllPaginated)
@@ -41,5 +42,17 @@ func NewRouter(artistService domain.ArtistService, songService domain.SongServic
 	mux.HandleFunc("POST /albums/{id}/tracks", albumHandler.AddTrack)
 	mux.HandleFunc("DELETE /albums/{id}/tracks/{song_id}", albumHandler.RemoveTrack)
 
-	return mux
+	// Middleware
+
+	// El orden importa:
+	// Primero el Logger anota la entrada.
+	// Luego el CORS revisa los permisos.
+	// Recovery en caso de panig
+	// Finalmente, llega al Mux (enrutador).
+
+	handlerConCORS := middleware.CORS(mux)
+	handlerConLogger := middleware.Logger(handlerConCORS)
+	handlerFinal := middleware.Recovery(handlerConLogger)
+
+	return handlerFinal
 }

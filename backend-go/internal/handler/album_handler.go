@@ -258,7 +258,7 @@ func (h *AlbumHandler) AddTrack(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Como solo agregamos la relación, un mensaje de éxito simple o un 204 es ideal.
-	WriteJSON(w, http.StatusCreated, map[string]string{"message": "Track agregado exitosamente"}) // 200
+	WriteMessageJSON(w, http.StatusCreated, "Track agregado exitosamente") // 200
 }
 
 // DELETE (/albums/{id}/tracks/{song_id})

@@ -34,11 +34,11 @@ func main() {
 	songService := service.NewSongService(songRepo)
 	albumService := service.NewAlbumService(albumRepo)
 
-	// Crar enrutador (Inyectar services)
+	// Crar enrutador (Inyectar services). Middleware: Log, CORS, recovery
 	router := handler.NewRouter(artistService, songService, albumService)
 
 	// Levantar Server
 	log.Println("Servidor corriendo en el puerto 8080...")
-	http.ListenAndServe(":8080", router) // envolver en middleware
+	http.ListenAndServe(":8080", router) // Envuelto en middleware
 
 }

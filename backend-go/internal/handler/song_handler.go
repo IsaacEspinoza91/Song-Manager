@@ -246,7 +246,7 @@ func (h *SongHandler) AddArtist(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "Error al agregar el artista", nil) // 500
 		return
 	}
-	WriteJSON(w, http.StatusCreated, map[string]string{"message": "Artista agregado exitosamente"}) // 200
+	WriteMessageJSON(w, http.StatusCreated, "Artista agregado exitosamente") // 200
 }
 
 // DELETE (/songs/{id}/artist/{artist_id})

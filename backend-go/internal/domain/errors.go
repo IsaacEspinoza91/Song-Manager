@@ -11,12 +11,14 @@ var (
 var (
 	ErrArtistNotFound  = errors.New("artista no encontrado")
 	ErrArtistIDInvalid = errors.New("ID de artista inválido")
+	ErrArtistNotInDB   = errors.New("el artista indicado no existe en la base de datos")
 )
 
 // Errores de Canciones
 var (
-	ErrSongNotFound  = errors.New("canción no encontrada")
-	ErrSongIDInvalid = errors.New("ID de canción inválido")
+	ErrSongNotFound        = errors.New("canción no encontrada")
+	ErrSongIDInvalid       = errors.New("ID de canción inválido")
+	ErrArtistAlreadyInSong = errors.New("este artista ya existe en esta canción")
 )
 
 // Errores de Álbumes y Tracks

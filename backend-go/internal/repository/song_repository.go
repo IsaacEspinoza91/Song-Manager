@@ -394,3 +394,36 @@ func (r *songRepository) Delete(ctx context.Context, id int64) error {
 	}
 	return nil
 }
+
+// Add Remove Artist
+func (r *songRepository) AddArtist(ctx context.Context, songID int64, input *domain.ArtistSongInput) error {
+	query := `INSERT INTO song_artists (song_id, artist_id, role) VALUES ($1, $2, $3)`
+	_, err := r.db.Exec(ctx, query, songID, input.ArtistID, input.Role)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == "23505" {
+				if pgErr.ConstraintName == "song_artists_pkey" {
+					return domain.ErrArtistAlreadyInSong
+				}
+			}
+			if pgErr.Code == "23503" {
+				return domain.ErrArtistNotInDB
+			}
+		}
+	}
+	return nil
+}
+
+func (r *songRepository) RemoveArtist(ctx context.Context, songID, artistID int64) error {
+	query := `DELETE FROM song_artists WHERE song_id = $1 AND artist_id = $2`
+
+	res, err := r.db.Exec(ctx, query, songID, artistID)
+	if err != nil {
+		return fmt.Errorf("error eliminando el artista %d del álbum %d: %w", artistID, songID, err)
+	}
+	if res.RowsAffected() == 0 {
+		return domain.ErrArtistNotFound
+	}
+	return nil
+}

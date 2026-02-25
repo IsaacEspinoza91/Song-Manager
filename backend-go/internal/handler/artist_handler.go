@@ -94,7 +94,7 @@ func (h *ArtistHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, artist) // 200 OK
 }
 
-// GET ALL PAG (GET /artists?page=2&limit=5&genre=rock&country=chile)
+// GET ALL PAG (GET /artists?page=2&limit=5&genre=rock&country=chile?name=  bad)
 func (h *ArtistHandler) GetAllPaginated(w http.ResponseWriter, r *http.Request) {
 	// Extraer query params
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
@@ -161,7 +161,7 @@ func (h *ArtistHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Caso error fue porque no se encontró el artista
-		if errors.Is(err, domain.ErrArtistNotFound){
+		if errors.Is(err, domain.ErrArtistNotFound) {
 			WriteError(w, http.StatusNotFound, err.Error(), nil) // 404
 			return
 		}

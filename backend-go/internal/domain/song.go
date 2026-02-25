@@ -44,6 +44,27 @@ type SongFilter struct {
 }
 
 // VALIDACIONES
+func (input *ArtistSongInput) Sanitize() {
+	input.Role = validation.SanitizeString(input.Role)
+}
+
+func (input *ArtistSongInput) Validate() error {
+	input.Sanitize()
+	errs := make(ValidationError)
+
+	if input.ArtistID <= 0 {
+		errs["artist"] = "el artista tiene un ID inválido"
+	}
+	if input.Role != "producer" && input.Role != "ft" && input.Role != "main" {
+		errs["role"] = "el rol de artistas debe ser main, ft o producer"
+	}
+
+	if len(errs) > 0 {
+		return errs
+	}
+	return nil
+}
+
 func (input *SongFilter) Sanitize() {
 	input.Title = validation.SanitizeString(input.Title)
 	input.ArtistName = validation.SanitizeString(input.ArtistName)
@@ -91,6 +112,8 @@ type SongRepository interface {
 	GetAllPaginated(ctx context.Context, filter SongFilter, params PaginationParams) (*PaginatedResult[Song], error)
 	Update(ctx context.Context, id int64, input *SongInput) (*Song, error)
 	Delete(ctx context.Context, id int64) error
+	AddArtist(ctx context.Context, songID int64, input *ArtistSongInput) error
+	RemoveArtist(ctx context.Context, songID, artistID int64) error
 }
 
 type SongService interface {
@@ -100,4 +123,6 @@ type SongService interface {
 	GetAllPaginated(ctx context.Context, filter SongFilter, params PaginationParams) (*PaginatedResult[Song], error)
 	Update(ctx context.Context, id int64, input *SongInput) (*Song, error)
 	Delete(ctx context.Context, id int64) error
+	AddArtist(ctx context.Context, songID int64, input *ArtistSongInput) error
+	RemoveArtist(ctx context.Context, songID, artistID int64) error
 }

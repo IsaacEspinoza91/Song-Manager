@@ -65,3 +65,24 @@ func (s *songService) Delete(ctx context.Context, id int64) error {
 	}
 	return s.repo.Delete(ctx, id)
 }
+
+func (s *songService) AddArtist(ctx context.Context, songID int64, input *domain.ArtistSongInput) error {
+	if songID <= 0 {
+		return domain.ErrSongIDInvalid
+	}
+	if err := input.Validate(); err != nil {
+		return err
+	}
+	return s.repo.AddArtist(ctx, songID, input)
+}
+
+func (s *songService) RemoveArtist(ctx context.Context, songID, artistID int64) error {
+	if artistID <= 0 {
+		return domain.ErrArtistIDInvalid
+	}
+	if songID <= 0 {
+		return domain.ErrSongIDInvalid
+	}
+
+	return s.repo.RemoveArtist(ctx, songID, artistID)
+}

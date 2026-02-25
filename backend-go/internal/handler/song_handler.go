@@ -206,3 +206,69 @@ func (h *SongHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	WriteNoContent(w)
 }
+
+// Agregar nuevo artista a song (POST /songs/{id}/artist)
+func (h *SongHandler) AddArtist(w http.ResponseWriter, r *http.Request) {
+	songID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "El ID de la canción debe ser un entero válido", nil)
+		return
+	}
+	if songID <= 0 {
+		WriteError(w, http.StatusBadRequest, "El ID de canción debe ser mayor a 0", nil)
+		return
+	}
+
+	var input domain.ArtistSongInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		WriteError(w, http.StatusBadRequest, "Formato JSON inválido", err.Error())
+		return
+	}
+
+	err = h.service.AddArtist(r.Context(), songID, &input)
+	if err != nil {
+		var valErrs domain.ValidationError
+		if errors.As(err, &valErrs) {
+			WriteError(w, http.StatusBadRequest, "Datos de artista inválidos", valErrs)
+			return
+		}
+
+		if errors.Is(err, domain.ErrArtistAlreadyInSong) {
+			WriteError(w, http.StatusConflict, err.Error(), nil) // 409 Conflict
+			return
+		}
+		if errors.Is(err, domain.ErrArtistNotInDB) {
+			WriteError(w, http.StatusBadRequest, err.Error(), nil) // 400 Bad Request
+			return
+		}
+
+		log.Printf("[ERROR INTERNO] : %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Error al agregar el artista", nil) // 500
+		return
+	}
+	WriteJSON(w, http.StatusCreated, map[string]string{"message": "Artista agregado exitosamente"}) // 200
+}
+
+// DELETE (/songs/{id}/artist/{artist_id})
+func (h *SongHandler) RemoveArtist(w http.ResponseWriter, r *http.Request) {
+	songID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	artistID, err2 := strconv.ParseInt(r.PathValue("artist_id"), 10, 64)
+
+	if err != nil || err2 != nil || songID <= 0 || artistID <= 0 {
+		WriteError(w, http.StatusBadRequest, "Los IDs de la URL deben ser válidos", nil)
+		return
+	}
+
+	err = h.service.RemoveArtist(r.Context(), songID, artistID)
+	if err != nil {
+		if errors.Is(err, domain.ErrArtistNotFound) {
+			WriteError(w, http.StatusNotFound, err.Error(), nil) // 404
+			return
+		}
+		log.Printf("[ERROR INTERNO] : %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Error al remover el artista", nil) // 500
+		return
+	}
+
+	WriteNoContent(w)
+}

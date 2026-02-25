@@ -15,7 +15,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data # Guarda los datos para que no se borren si apagas el contenedor
 
-  # 2. Tu API en Go
+  # 2. API en Go
   api:
     build: .
     container_name: song_manager_api

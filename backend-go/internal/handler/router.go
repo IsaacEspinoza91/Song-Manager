@@ -47,12 +47,14 @@ func NewRouter(artistService domain.ArtistService, songService domain.SongServic
 	// El orden importa:
 	// Primero el Logger anota la entrada.
 	// Luego el CORS revisa los permisos.
-	// Recovery en caso de panig
+	// Rate Limiting. Contra ataques masivos de una IP
+	// Recovery en caso de panic
 	// Finalmente, llega al Mux (enrutador).
 
 	handlerConCORS := middleware.CORS(mux)
 	handlerConLogger := middleware.Logger(handlerConCORS)
-	handlerFinal := middleware.Recovery(handlerConLogger)
+	handlerConRateLimit := middleware.RateLimit(handlerConLogger)
+	handlerFinal := middleware.Recovery(handlerConRateLimit)
 
 	return handlerFinal
 }

@@ -340,7 +340,7 @@ func (r *albumRepository) GetAlbumsByArtistID(ctx context.Context, artistID int6
 	queryAlbums := `
 		SELECT al.id, al.title, al.release_date, al.type, al.cover_url, al.created_at, al.updated_at
 		FROM albums al
-		INNER JOIN album_artists aa ON al.album_id = aa.album_id
+		INNER JOIN album_artists aa ON al.id = aa.album_id
 		WHERE aa.artist_id = $1 AND al.deleted_at IS NULL
 		ORDER BY al.release_date DESC
 	`
@@ -375,7 +375,7 @@ func (r *albumRepository) GetAlbumsByArtistID(ctx context.Context, artistID int6
 	// Obtener todos los artistas dela album
 	queryArtist := `
 		SELECT aa.album_id, a.id, a.name, aa.is_primary
-		FROM artist a
+		FROM artists a
 		INNER JOIN album_artists aa ON a.id = aa.artist_id
 		WHERE aa.album_id = ANY($1) AND a.deleted_at IS NULL
 	`
@@ -405,8 +405,7 @@ func (r *albumRepository) GetAlbumsByArtistID(ctx context.Context, artistID int6
 	return albums, nil
 }
 
-// Editar Album con artistas y tracks
-// Deberia solo editar album con artistas. Los tracks se editan en AddTrack y RemoveTrack
+// Editar Album con artistas. No edita track, estos editan en AddTrack y RemoveTrack
 func (r *albumRepository) Update(ctx context.Context, albumID int64, input *domain.AlbumInput) (*domain.Album, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -428,7 +427,7 @@ func (r *albumRepository) Update(ctx context.Context, albumID int64, input *doma
 	}
 
 	// Limpiar relaciones antiguas
-	deletedArtistsQuery := `DELETE FROM album_artist WHERE album_id = $1`
+	deletedArtistsQuery := `DELETE FROM album_artists WHERE album_id = $1`
 	_, err = tx.Exec(ctx, deletedArtistsQuery, albumID)
 	if err != nil {
 		return nil, fmt.Errorf("error limpiando relaciones antiguas de artitas del álbum: %w", err)

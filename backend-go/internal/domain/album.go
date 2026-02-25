@@ -80,7 +80,7 @@ func (input *AlbumInput) Sanitize() {
 }
 
 func (input *AlbumInput) Validate() error {
-	input.Validate()
+	input.Sanitize()
 	errs := make(ValidationError)
 
 	if input.Title == "" {

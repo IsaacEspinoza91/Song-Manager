@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  # 1. Base de Datos PostgreSQL
+  db:
+    image: postgres:15-alpine
+    container_name: song_manager_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: song_manager
+    ports:
+      - "5432:5432" # Expone el puerto para conectarse con pgAdmin
+    volumes:
+      - pgdata:/var/lib/postgresql/data # Guarda los datos para que no se borren si apagas el contenedor
+
+  # 2. Tu API en Go
+  api:
+    build: .
+    container_name: song_manager_api
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db # Obliga a Docker a iniciar la base de datos primero
+    environment:
+      - PORT=8080
+      - DB_USER=postgres
+      - DB_PASSWORD=admin
+      - DB_NAME=song_manager
+      - DB_PORT=5432
+      # En la red de Docker, el host es el nombre del servicio de arriba ('db')
+      - DB_HOST=db
+
+volumes:
+  pgdata: # Define el volumen persistente

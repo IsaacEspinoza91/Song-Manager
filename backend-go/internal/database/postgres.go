@@ -3,22 +3,13 @@ package database
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool" // Mejor rendimiento que lib/pq
 )
 
 // Abre conexion, hace ping y retorna pool de conexiones
-func NewPostgresConnection(ctx context.Context) (*pgxpool.Pool, error) {
-	// Contruccion URL usando var entorno
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s",
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASSWORD"),
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_PORT"),
-		os.Getenv("DB_NAME"),
-	)
-
+// Solo realiza la conexion, no lee var de entorno (config.go)
+func NewPostgresConnection(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	// pgxpool maneja el conjunto de conexiones abiertas
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {

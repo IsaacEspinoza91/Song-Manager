@@ -1,0 +1,45 @@
+/* Modern Dark Theme Variables */
+:root {
+  /* Colors */
+  --bg-primary: #0f0f13;
+  --bg-secondary: #1a1a24;
+  --bg-tertiary: #272733;
+
+  --text-primary: #ffffff;
+  --text-secondary: #b3b3b3;
+  --text-muted: #a7a7a7;
+
+  --accent-primary: #1ed760;
+  /* Spotify Green */
+  --accent-hover: #1fdf64;
+  --accent-cyan: #1db954;
+  /* Slightly darker green for gradients */
+  --accent-pink: #1ed760;
+  /* Adjusted to keep consistency */
+
+  --border-color: rgba(255, 255, 255, 0.1);
+  --border-color-hover: rgba(255, 255, 255, 0.2);
+
+  --danger: #ef4444;
+  --success: #10b981;
+  --warning: #f59e0b;
+
+  /* Typography */
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* Effects */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-neon: 0 0 15px rgba(30, 215, 96, 0.4);
+  /* Green glow */
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
+
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}

@@ -23,6 +23,8 @@ type Track struct {
 	SongID      int64  `json:"song_id"`
 	Title       string `json:"title"`    // Info extraída de la tabla songs
 	Duration    int    `json:"duration"` // Info extraída de la tabla songs
+
+	Artists []ArtistWithRole `json:"artists,omitempty"`
 }
 
 type Album struct {

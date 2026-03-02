@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -183,16 +184,30 @@ func (r *albumRepository) GetByID(ctx context.Context, id int64) (*domain.Album,
 		return nil, fmt.Errorf("error iterando los artistas del álbum: %w", err)
 	}
 
-	// 3. Obtener los tracks
+	// 3. Obtener los tracks con artistas
 	album.Tracks = []domain.Track{}
 	// JOIN con songs para traernos el título y la duración. Es vital el ORDER BY track_number
 	queryTracks := `
-		SELECT t.track_number, s.id, s.title, s.duration
-		FROM tracks t
-		INNER JOIN songs s ON t.song_id = s.id
-		WHERE t.album_id = $1 AND s.deleted_at IS NULL
-		ORDER BY t.track_number ASC
-	`
+    SELECT 
+        t.track_number, 
+        s.id, 
+        s.title, 
+        s.duration,
+        COALESCE(
+            (SELECT jsonb_agg(jsonb_build_object(
+                'id', a.id,
+                'name', a.name,
+                'role', sa.role
+            ))
+            FROM song_artists sa
+            INNER JOIN artists a ON sa.artist_id = a.id
+            WHERE sa.song_id = s.id AND a.deleted_at IS NULL
+        ), '[]') as artists
+    FROM tracks t
+    INNER JOIN songs s ON t.song_id = s.id
+    WHERE t.album_id = $1 AND s.deleted_at IS NULL
+    ORDER BY t.track_number ASC
+`
 	trackRows, err := r.db.Query(ctx, queryTracks, id)
 	if err != nil {
 		return nil, fmt.Errorf("error consultando los tracks del álbum: %w", err)
@@ -201,9 +216,22 @@ func (r *albumRepository) GetByID(ctx context.Context, id int64) (*domain.Album,
 
 	for trackRows.Next() {
 		var track domain.Track
-		err := trackRows.Scan(&track.TrackNumber, &track.SongID, &track.Title, &track.Duration)
+		var artistsJSON []byte
+
+		err := trackRows.Scan(
+			&track.TrackNumber,
+			&track.SongID,
+			&track.Title,
+			&track.Duration,
+			&artistsJSON, // Escaneamos el JSON como bytes
+		)
 		if err != nil {
 			return nil, fmt.Errorf("error escaneando track del álbum: %w", err)
+		}
+
+		// Deserializamos el JSON de artistas al slice de Go
+		if err := json.Unmarshal(artistsJSON, &track.Artists); err != nil {
+			return nil, fmt.Errorf("error unmarshaling artistas: %w", err)
 		}
 		album.Tracks = append(album.Tracks, track)
 	}

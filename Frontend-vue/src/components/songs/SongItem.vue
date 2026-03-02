@@ -22,9 +22,14 @@ const formatDuration = (seconds) => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
-const displayArtists = computed(() => {
-  if (!props.song.artists || props.song.artists.length === 0) return 'Artista Desconocido';
-  return props.song.artists.map(a => a.name).join(', ');
+const mainArtists = computed(() => {
+  if (!props.song.artists) return [];
+  return props.song.artists.filter(a => a.role === 'main' || !a.role);
+});
+
+const ftArtists = computed(() => {
+  if (!props.song.artists) return [];
+  return props.song.artists.filter(a => a.role === 'ft');
 });
 </script>
 
@@ -33,7 +38,20 @@ const displayArtists = computed(() => {
     <div class="number" v-if="index !== undefined">{{ index + 1 }}</div>
     <div class="info">
       <h4 class="title">{{ song.title }}</h4>
-      <p class="artists">{{ displayArtists }}</p>
+      <p class="artists">
+        <span v-if="mainArtists.length === 0 && ftArtists.length === 0">Artista Desconocido</span>
+        
+        <span v-for="(artist, idx) in mainArtists" :key="artist.id">
+            <router-link :to="`/artists/${artist.id}`" class="artist-link" @click.stop>{{ artist.name }}</router-link><span v-if="idx < mainArtists.length - 1">, </span>
+        </span>
+        
+        <span v-if="ftArtists.length > 0">
+            <span class="ft-text"> ft. </span>
+            <span v-for="(artist, idx) in ftArtists" :key="'ft-'+artist.id">
+                <router-link :to="`/artists/${artist.id}`" class="artist-link" @click.stop>{{ artist.name }}</router-link><span v-if="idx < ftArtists.length - 1">, </span>
+            </span>
+        </span>
+      </p>
     </div>
     <div class="duration">{{ formatDuration(song.duration) }}</div>
     <div class="actions" v-if="!readonly">
@@ -116,5 +134,22 @@ const displayArtists = computed(() => {
 
 .icon-btn.danger:hover {
   /* No specific color as it's an emoji but we do the scale */
+}
+
+.artist-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.artist-link:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+.ft-text {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin: 0 0.1rem;
 }
 </style>

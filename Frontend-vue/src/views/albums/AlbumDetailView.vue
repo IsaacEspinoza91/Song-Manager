@@ -15,7 +15,7 @@ const albumId = route.params.id;
 const loading = ref(true);
 const error = ref(null);
 const album = ref(null);
-const primaryArtist = ref(null);
+const primaryArtists = ref([]);
 
 const breadcrumbItems = computed(() => {
   return [
@@ -36,11 +36,15 @@ const fetchData = async () => {
     const albumResp = await albumService.getById(albumId);
     album.value = albumResp.data || albumResp;
 
-    // Fetch primary artist for the photo
+    // Fetch primary artists for the photo
     if (album.value.artists && album.value.artists.length > 0) {
-        const pArtist = album.value.artists.find(a => a.is_primary) || album.value.artists[0];
-        const artistResp = await artistService.getById(pArtist.artist_id || pArtist.id);
-        primaryArtist.value = artistResp.data || artistResp;
+        const primaryArtistRels = album.value.artists.filter(a => a.is_primary);
+        const toFetch = primaryArtistRels.length > 0 ? primaryArtistRels : [album.value.artists[0]];
+        
+        const fetchedArtists = await Promise.all(
+            toFetch.map(a => artistService.getById(a.artist_id || a.id))
+        );
+        primaryArtists.value = fetchedArtists.map(resp => resp.data || resp);
     }
 
   } catch(err) {
@@ -74,20 +78,29 @@ const fetchAvailableArtists = async () => {
   }
 };
 
-const handleEditSong = async (song) => {
-  const initialArtists = song.artists && song.artists.length > 0 
-    ? song.artists.map(a => ({ artist_id: a.id || a.artist_id, role: a.role }))
-    : [{ artist_id: '', role: 'main' }];
+const handleEditSong = async (songStub) => {
+  try {
+      // Fetch full song data to get accurate artist roles for this specific song
+      const fullSongResp = await songService.getById(songStub.id);
+      const song = fullSongResp.data || fullSongResp;
+      
+      const initialArtists = song.artists && song.artists.length > 0 
+        ? song.artists.map(a => ({ artist_id: a.id || a.artist_id, role: a.role }))
+        : [{ artist_id: '', role: 'main' }];
 
-  Object.assign(songForm, {
-    id: song.id,
-    title: song.title,
-    duration: song.duration,
-    artists: [...initialArtists]
-  });
-  songFormError.value = null;
-  if(availableArtists.value.length === 0) await fetchAvailableArtists();
-  isSongModalOpen.value = true;
+      Object.assign(songForm, {
+        id: song.id,
+        title: song.title,
+        duration: song.duration,
+        artists: [...initialArtists]
+      });
+      songFormError.value = null;
+      if(availableArtists.value.length === 0) await fetchAvailableArtists();
+      isSongModalOpen.value = true;
+  } catch (err) {
+      console.error("Error fetching full song details for edit:", err);
+      alert('Error al obtener datos de la canción para edición.');
+  }
 };
 
 const saveSong = async () => {
@@ -128,6 +141,57 @@ const addArtist = () => {
     songForm.artists.push({ artist_id: '', role: 'main' });
 };
 
+// ========================
+// TRACK ADDITION
+// ========================
+const isTrackModalOpen = ref(false);
+const trackFormError = ref(null);
+const availableSongs = ref([]);
+const trackForm = reactive({
+    song_id: '',
+    track_number: 1
+});
+
+const loadAvailableSongs = async () => {
+    try {
+        const resp = await songService.getPaginated({ limit: 1000 }); // Simplification to get all
+        availableSongs.value = resp.data || [];
+    } catch(err) {
+        console.error('Could not load songs', err);
+    }
+};
+
+const openAddTrackModal = async () => {
+    trackForm.song_id = '';
+    // Suggest the next track number
+    trackForm.track_number = album.value.tracks ? album.value.tracks.length + 1 : 1;
+    trackFormError.value = null;
+    if (availableSongs.value.length === 0) await loadAvailableSongs();
+    isTrackModalOpen.value = true;
+};
+
+const appendTrack = async () => {
+    try {
+        trackFormError.value = null;
+        if (!trackForm.song_id) {
+            trackFormError.value = 'Debe seleccionar una canción.';
+            return;
+        }
+
+        const payload = {
+            song_id: Number(trackForm.song_id),
+            track_number: Number(trackForm.track_number)
+        };
+
+        await albumService.addTrack(albumId, payload);
+        isTrackModalOpen.value = false;
+        await fetchData(); // Refresh album details
+    } catch (err) {
+        console.error(err);
+        trackFormError.value = 'Error al agregar la pista al álbum. Es posible que el número de pista ya exista o la canción ya esté agregada.';
+    }
+};
+
 // Delete Confirmation
 const isDeleteModalOpen = ref(false);
 const itemToDeleteId = ref(null);
@@ -135,18 +199,20 @@ const itemToDeleteName = ref('');
 
 const handleDeleteSong = (id, title) => {
   itemToDeleteId.value = id;
-  itemToDeleteName.value = title || 'esta canción';
+  // Specific wording requested by user
+  itemToDeleteName.value = title ? `la pista "${title}" del álbum (la canción original no será eliminada)` : 'esta pista del álbum';
   isDeleteModalOpen.value = true;
 };
 
 const executeDelete = async () => {
     try {
-        await songService.delete(itemToDeleteId.value);
+        // Use removeTrack to purely remove the relationship, NOT delete the global song
+        await albumService.removeTrack(albumId, itemToDeleteId.value);
         await fetchData(); // Refresh album data
         isDeleteModalOpen.value = false;
     } catch(err) {
         console.error(err);
-        alert('Error en la eliminación');
+        alert('Error al remover la pista');
     }
 };
 
@@ -175,19 +241,26 @@ onMounted(() => {
                   <span class="type-badge">{{ album.type }}</span>
                   <h1 class="album-title">{{ album.title }}</h1>
                   
-                  <div class="artist-block" v-if="primaryArtist">
-                      <div class="artist-thumb-wrapper">
-                          <img v-if="primaryArtist.image_url" :src="primaryArtist.image_url" :alt="primaryArtist.name" class="artist-thumb" />
-                          <div v-else class="placeholder-thumb">{{ primaryArtist.name.charAt(0) }}</div>
-                      </div>
-                      <router-link :to="`/artists/${primaryArtist.id}`" class="artist-link">
-                          {{ primaryArtist.name }}
-                      </router-link>
+                  <div class="artist-block-list" v-if="primaryArtists && primaryArtists.length > 0">
+                      <template v-for="(artist, index) in primaryArtists" :key="artist.id">
+                          <div class="artist-item">
+                              <div class="artist-thumb-wrapper">
+                                  <img v-if="artist.image_url" :src="artist.image_url" :alt="artist.name" class="artist-thumb" />
+                                  <div v-else class="placeholder-thumb">{{ artist.name.charAt(0) }}</div>
+                              </div>
+                              <router-link :to="`/artists/${artist.id}`" class="artist-link">
+                                  {{ artist.name }}
+                              </router-link>
+                          </div>
+                          <span class="meta-dot" v-if="index < primaryArtists.length - 1">,</span>
+                      </template>
                       <span class="meta-dot">•</span>
-                      <span class="release-year">{{ new Date(album.release_date).getFullYear() }}</span>
+                      <span class="release-year" v-if="album.release_date">{{ new Date(album.release_date).getFullYear() }}</span>
                   </div>
                   <div v-else class="artist-block">
                      <span class="text-muted">Artista Desconocido</span>
+                     <span class="meta-dot" v-if="album.release_date">•</span>
+                     <span class="release-year" v-if="album.release_date">{{ new Date(album.release_date).getFullYear() }}</span>
                   </div>
 
                   <p class="album-dates">
@@ -200,7 +273,10 @@ onMounted(() => {
 
       <!-- Tracks List -->
       <div class="tracks-section glass-panel p-4 mt-4">
-          <h2 class="section-title mb-4">Pistas</h2>
+          <div class="flex justify-between items-center mb-4">
+              <h2 class="section-title mb-0">Pistas</h2>
+              <button class="btn btn-primary btn-sm" @click="openAddTrackModal">+ Agregar Pista</button>
+          </div>
           <div v-if="!album.tracks || album.tracks.length === 0" class="empty-state">
               No hay pistas registradas en este álbum.
           </div>
@@ -209,7 +285,7 @@ onMounted(() => {
               <SongItem 
                 v-for="track in album.tracks" 
                 :key="track.song_id" 
-                :song="{ id: track.song_id, title: track.title, duration: track.duration, artists: album.artists }" 
+                :song="{ id: track.song_id, title: track.title, duration: track.duration, artists: track.artists }" 
                 :index="track.track_number - 1" 
                 :readonly="false" 
                 @edit="handleEditSong"
@@ -272,8 +348,35 @@ onMounted(() => {
         </div>
       </form>
     </Modal>
+    
+    <!-- Add Track Modal -->
+    <Modal :isOpen="isTrackModalOpen" @close="isTrackModalOpen = false" title="Agregar Pista al Álbum">
+      <form @submit.prevent="appendTrack">
+        <div v-if="trackFormError" class="error-msg">{{ trackFormError }}</div>
+        
+        <div class="form-group">
+            <label>Seleccionar Canción Existente</label>
+            <select v-model="trackForm.song_id" class="form-input" required>
+                <option value="">Selecciona una Canción</option>
+                <option v-for="song in availableSongs" :key="song.id" :value="song.id">
+                    {{ song.title }}
+                </option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Número de Pista</label>
+            <input type="number" v-model="trackForm.track_number" class="form-input" required min="1" />
+        </div>
 
-    <!-- Confirm Delete Modal -->
+        <div class="form-actions mt-4">
+          <button type="button" class="btn btn-secondary" @click="isTrackModalOpen = false">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Agregar</button>
+        </div>
+      </form>
+    </Modal>
+
+    <!-- Confirm Delete Modal (Remove Track) -->
     <ConfirmDeleteModal 
       :isOpen="isDeleteModalOpen" 
       :itemName="itemToDeleteName"
@@ -372,6 +475,20 @@ onMounted(() => {
     align-items: center;
     gap: 0.5rem;
     margin-bottom: 1.5rem;
+}
+
+.artist-block-list {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.artist-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .artist-thumb-wrapper {

@@ -18,9 +18,11 @@ const releaseYear = computed(() => {
 });
 
 const primaryArtist = computed(() => {
-  if (!props.album.artists) return 'Desconocido';
-  const primary = props.album.artists.find(a => a.is_primary);
-  return primary ? primary.name : props.album.artists[0]?.name || 'Desconocido';
+  if (!props.album.artists || props.album.artists.length === 0) return 'Artista Desconocido';
+  // Get all primary artists, or default to all artists if none are marked primary
+  const primaries = props.album.artists.filter(a => a.is_primary);
+  const targetArray = primaries.length > 0 ? primaries : props.album.artists;
+  return targetArray.map(a => a.name).join(', ');
 });
 </script>
 

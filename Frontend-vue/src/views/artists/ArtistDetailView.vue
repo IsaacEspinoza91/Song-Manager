@@ -148,8 +148,6 @@ const executeDelete = async () => {
 // ========================
 // ALBUM CRUD (EDIT & DELETE)
 // ========================
-const isAlbumModalOpen = ref(false);
-const albumFormError = ref(null);
 const albumForm = reactive({
   id: null,
   title: '',
@@ -157,10 +155,30 @@ const albumForm = reactive({
   type: 'LP',
   cover_url: '',
   artist_id: '',
-  is_primary: true
+  is_primary: true,
+  artists: []
 });
 
+const isEditingAlbum = ref(false);
+
+const openCreateAlbum = () => {
+    isEditingAlbum.value = false;
+    Object.assign(albumForm, {
+        id: null,
+        title: '',
+        release_date: '',
+        type: 'LP',
+        cover_url: '',
+        artist_id: artistId,
+        is_primary: true,
+        artists: [{ artist_id: artistId, is_primary: true }]
+    });
+    albumFormError.value = null;
+    isAlbumModalOpen.value = true;
+};
+
 const handleEditAlbum = (album) => {
+  isEditingAlbum.value = true;
   Object.assign(albumForm, {
     id: album.id,
     title: album.title,
@@ -195,7 +213,12 @@ const saveAlbum = async () => {
         return;
     }
 
-    await albumService.update(albumForm.id, payload);
+    if (isEditingAlbum.value) {
+        await albumService.update(albumForm.id, payload);
+    } else {
+        await albumService.create(payload);
+    }
+    
     isAlbumModalOpen.value = false;
     
     // Refresh albums for this artist
@@ -268,7 +291,10 @@ onMounted(() => {
 
           <!-- Albums -->
           <div class="albums-section glass-panel p-4 mt-4">
-              <h2 class="section-title mb-4">Álbumes</h2>
+              <div class="flex justify-between items-center mb-4">
+                  <h2 class="section-title mb-0">Álbumes</h2>
+                  <button class="btn btn-primary btn-sm" @click="openCreateAlbum">+ Nuevo Álbum</button>
+              </div>
               <div v-if="albums.length === 0" class="empty-state">No hay álbumes registrados.</div>
               <div v-else class="albums-grid">
                   <AlbumCard 
@@ -326,7 +352,7 @@ onMounted(() => {
     </Modal>
 
     <!-- Album Edit Modal -->
-    <Modal :isOpen="isAlbumModalOpen" @close="isAlbumModalOpen = false" title="Editar Álbum">
+    <Modal :isOpen="isAlbumModalOpen" @close="isAlbumModalOpen = false" :title="isEditingAlbum ? 'Editar Álbum' : 'Crear Nuevo Álbum'">
       <form @submit.prevent="saveAlbum">
         <div v-if="albumFormError" class="error-msg">{{ albumFormError }}</div>
         

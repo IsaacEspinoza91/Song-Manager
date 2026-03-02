@@ -5,7 +5,7 @@
   <main class="home-view">
     <div class="hero glass-panel">
       <h1 class="gradient-text">Bienvenido a Song Manager</h1>
-      <p>Tu plataforma premium para gestionar artistas, canciones y álbumes.</p>
+      <p>Tu para gestionar artistas, canciones y álbumes.</p>
     </div>
   </main>
 </template>

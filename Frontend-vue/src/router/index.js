@@ -14,11 +14,11 @@ const router = createRouter({
             name: 'artists',
             component: () => import('../views/artists/ArtistListView.vue')
         },
-        // {
-        //   path: '/artists/:id',
-        //   name: 'artist-detail',
-        //   component: () => import('../views/artists/ArtistDetailView.vue')
-        // },
+        {
+            path: '/artists/:id',
+            name: 'artist-detail',
+            component: () => import('../views/artists/ArtistDetailView.vue')
+        },
         {
             path: '/songs',
             name: 'songs',
@@ -28,6 +28,11 @@ const router = createRouter({
             path: '/albums',
             name: 'albums',
             component: () => import('../views/albums/AlbumListView.vue')
+        },
+        {
+            path: '/albums/:id',
+            name: 'album-detail',
+            component: () => import('../views/albums/AlbumDetailView.vue')
         }
     ]
 })

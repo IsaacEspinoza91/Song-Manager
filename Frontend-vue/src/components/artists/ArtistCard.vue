@@ -10,7 +10,7 @@ const props = defineProps({
 </script>
 
 <template>
-  <div class="artist-card glass-panel">
+  <div class="artist-card glass-panel" @click="$router.push(`/artists/${artist.id}`)">
     <div class="image-wrapper">
       <img v-if="artist.image_url" :src="artist.image_url" :alt="artist.name" class="artist-image" />
       <div v-else class="placeholder-image">
@@ -21,8 +21,8 @@ const props = defineProps({
       <h3 class="name">{{ artist.name }}</h3>
       <p class="genre">{{ artist.genre }} • {{ artist.country }}</p>
       <div class="actions">
-        <button class="btn btn-secondary btn-sm" @click="$emit('edit', artist)">Editar</button>
-        <button class="btn btn-danger btn-sm" @click="$emit('delete', artist.id)">Eliminar</button>
+        <button class="btn btn-secondary btn-sm" @click.stop="$emit('edit', artist)">✏️ Editar</button>
+        <button class="btn btn-danger btn-sm" @click.stop="$emit('delete', artist.id)">🗑️ Eliminar</button>
       </div>
     </div>
   </div>

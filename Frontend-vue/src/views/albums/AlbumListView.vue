@@ -5,6 +5,7 @@ import { artistService } from '../../services/artist.service';
 import { songService } from '../../services/song.service';
 import AlbumCard from '../../components/albums/AlbumCard.vue';
 import Modal from '../../components/common/Modal.vue';
+import ConfirmDeleteModal from '../../components/common/ConfirmDeleteModal.vue';
 
 const albums = ref([]);
 const loading = ref(true);
@@ -84,8 +85,9 @@ const albumForm = reactive({
   release_date: '',
   type: 'LP',
   cover_url: '',
-  artist_id: '',
-  is_primary: true
+  artists: [],
+  tracks: [],
+  showTracksForm: false
 });
 
 const fetchAvailableArtists = async () => {
@@ -100,22 +102,38 @@ const fetchAvailableArtists = async () => {
 
 const openCreateModal = async () => {
   isEditing.value = false;
-  Object.assign(albumForm, { id: null, title: '', release_date: '', type: 'LP', cover_url: '', artist_id: '', is_primary: true });
+  Object.assign(albumForm, { 
+      id: null, 
+      title: '', 
+      release_date: '', 
+      type: 'LP', 
+      cover_url: '', 
+      artists: [{ artist_id: '', is_primary: true }],
+      tracks: [],
+      showTracksForm: false
+  });
   formError.value = null;
   if(availableArtists.value.length === 0) await fetchAvailableArtists();
+  if(availableSongs.value.length === 0) await loadAvailableSongs();
   isModalOpen.value = true;
 };
 
 const handleEdit = async (album) => {
   isEditing.value = true;
+  
+  const initialArtists = album.artists && album.artists.length > 0
+    ? album.artists.map(a => ({ artist_id: a.id || a.artist_id, is_primary: a.is_primary }))
+    : [{ artist_id: '', is_primary: true }];
+
   Object.assign(albumForm, {
     id: album.id,
     title: album.title,
     release_date: album.release_date ? album.release_date.split('T')[0] : '', // format for date input
     type: album.type || 'LP',
     cover_url: album.cover_url || '',
-    artist_id: album.artists && album.artists.length > 0 ? album.artists[0].id : '',
-    is_primary: album.artists && album.artists.length > 0 ? album.artists[0].is_primary : true
+    artists: [...initialArtists],
+    tracks: [],
+    showTracksForm: false
   });
   formError.value = null;
   if(availableArtists.value.length === 0) await fetchAvailableArtists();
@@ -133,14 +151,21 @@ const saveAlbum = async () => {
       artists: []
     };
 
-    if (albumForm.artist_id) {
-       payload.artists = [{
-           artist_id: Number(albumForm.artist_id),
-           is_primary: albumForm.is_primary
-       }];
+    const validArtists = albumForm.artists
+        .filter(a => a.artist_id)
+        .map(a => ({ artist_id: Number(a.artist_id), is_primary: a.is_primary }));
+        
+    if (validArtists.length > 0) {
+       payload.artists = validArtists;
     } else {
         formError.value = 'Un álbum requiere de un artista.';
         return;
+    }
+
+    if (!isEditing.value && albumForm.showTracksForm) {
+        payload.tracks = albumForm.tracks
+            .filter(t => t.song_id)
+            .map(t => ({ song_id: Number(t.song_id), track_number: Number(t.track_number) }));
     }
 
     if (isEditing.value) {
@@ -156,15 +181,56 @@ const saveAlbum = async () => {
   }
 };
 
-const handleDelete = async (id) => {
-  if(confirm('¿Estás seguro de que quieres eliminar este álbum?')) {
-      try {
-        await albumService.delete(id);
-        albums.value = albums.value.filter(a => a.id !== id);
-      } catch(err) {
+const isDeleteModalOpen = ref(false);
+const isTrackDelete = ref(false);
+const itemToDeleteId = ref(null);
+const itemToDeleteName = ref('');
+
+const handleDelete = (id, title) => {
+  isTrackDelete.value = false;
+  itemToDeleteId.value = id;
+  itemToDeleteName.value = title || 'este álbum';
+  isDeleteModalOpen.value = true;
+};
+
+// Form UI handlers
+const addArtistEntry = () => {
+    albumForm.artists.push({ artist_id: '', is_primary: false });
+};
+
+const removeArtistEntry = (index) => {
+    albumForm.artists.splice(index, 1);
+};
+
+const toggleTracksForm = () => {
+    albumForm.showTracksForm = !albumForm.showTracksForm;
+    if (albumForm.showTracksForm && albumForm.tracks.length === 0) {
+        albumForm.tracks.push({ song_id: '', track_number: 1 });
+    }
+};
+
+const addTrackEntry = () => {
+    const nextNumber = albumForm.tracks.length + 1;
+    albumForm.tracks.push({ song_id: '', track_number: nextNumber });
+};
+
+const removeTrackEntry = (index) => {
+    albumForm.tracks.splice(index, 1);
+};
+
+const executeDelete = async () => {
+    try {
+        if (isTrackDelete.value) {
+           await albumService.removeTrack(activeAlbum.value.id, itemToDeleteId.value);
+           await loadAlbumTracks(activeAlbum.value.id);
+        } else {
+           await albumService.delete(itemToDeleteId.value);
+           albums.value = albums.value.filter(a => a.id !== itemToDeleteId.value);
+        }
+        isDeleteModalOpen.value = false;
+    } catch(err) {
         console.error(err);
-        alert('Error eliminando el álbum');
-      }
+        alert('Error en la eliminación');
     }
 };
 
@@ -228,16 +294,12 @@ const addTrack = async () => {
   }
 };
 
-const removeTrack = async (songId) => {
-    if(confirm('¿Eliminar esta pista del álbum?')) {
-        try {
-            await albumService.removeTrack(activeAlbum.value.id, songId);
-            await loadAlbumTracks(activeAlbum.value.id);
-        } catch(err) {
-            console.error(err);
-            formError.value = 'Error al eliminar la pista.';
-        }
-    }
+const removeTrack = (songId) => {
+    const track = albumTracks.value.find(t => t.song_id === songId);
+    isTrackDelete.value = true;
+    itemToDeleteId.value = songId;
+    itemToDeleteName.value = track ? track.title : 'esta pista';
+    isDeleteModalOpen.value = true;
 };
 
 onMounted(() => {
@@ -279,7 +341,7 @@ onMounted(() => {
           <AlbumCard 
             :album="album"
             @edit="handleEdit"
-            @delete="handleDelete"
+            @delete="handleDelete(album.id, album.title)"
           />
           <button class="btn btn-secondary w-full mt-2" @click="openManageTracks(album)">
               Gestionar Pistas
@@ -332,14 +394,68 @@ onMounted(() => {
           <input type="url" v-model="albumForm.cover_url" class="form-input" />
         </div>
 
-        <div class="form-group">
-          <label>Artista Principal</label>
-          <select v-model="albumForm.artist_id" class="form-input" required>
-            <option value="">Selecciona un Artista</option>
-            <option v-for="artist in availableArtists" :key="artist.id" :value="artist.id">
-              {{ artist.name }}
-            </option>
-          </select>
+        <div class="form-group mb-4">
+          <div class="flex justify-between items-center mb-2">
+            <label class="mb-0">Artistas</label>
+            <button type="button" class="btn btn-secondary btn-sm" @click="addArtistEntry">+ Agregar Artista</button>
+          </div>
+          
+          <div v-for="(artistEntry, index) in albumForm.artists" :key="index" class="artist-row flex gap-2 mb-2 items-start">
+              <div class="flex-1">
+                  <select v-model="artistEntry.artist_id" class="form-input" required>
+                    <option value="">Selecciona un Artista</option>
+                    <option v-for="artist in availableArtists" :key="artist.id" :value="artist.id">
+                      {{ artist.name }}
+                    </option>
+                  </select>
+              </div>
+              <div class="w-1/3">
+                  <select v-model="artistEntry.is_primary" class="form-input">
+                      <option :value="true">Principal</option>
+                      <option :value="false">Secundario</option>
+                  </select>
+              </div>
+              <button 
+                  v-if="albumForm.artists.length > 1" 
+                  type="button" 
+                  class="btn btn-danger icon-btn" 
+                  @click="removeArtistEntry(index)">
+                  🗑️
+              </button>
+          </div>
+        </div>
+
+        <!-- Optional Tracks in Create Mode -->
+        <div v-if="!isEditing" class="form-group mb-4 border-t pt-4">
+           <div class="flex justify-between items-center mb-2">
+             <label class="mb-0">Pistas Iniciales (Opcional)</label>
+             <button type="button" class="btn btn-secondary btn-sm" @click="toggleTracksForm">
+                 {{ albumForm.showTracksForm ? 'Ocultar Pistas' : '+ Añadir Pistas' }}
+             </button>
+           </div>
+           
+           <div v-if="albumForm.showTracksForm">
+               <div v-for="(trackEntry, index) in albumForm.tracks" :key="`track-${index}`" class="artist-row flex gap-2 mb-2 items-start">
+                   <div class="flex-1">
+                      <select v-model="trackEntry.song_id" class="form-input" required>
+                          <option value="">Seleccionar canción...</option>
+                          <option v-for="song in availableSongs" :key="song.id" :value="song.id">
+                              {{ song.title }}
+                          </option>
+                      </select>
+                   </div>
+                   <div class="w-1\/4">
+                       <input type="number" v-model="trackEntry.track_number" class="form-input" required min="1" placeholder="Nº" />
+                   </div>
+                   <button 
+                      type="button" 
+                      class="btn btn-danger icon-btn" 
+                      @click="removeTrackEntry(index)">
+                      🗑️
+                   </button>
+               </div>
+               <button type="button" class="btn btn-secondary btn-sm mt-2 w-full" @click="addTrackEntry">+ Agregar otra pista</button>
+           </div>
         </div>
 
         <div class="form-actions">
@@ -391,6 +507,14 @@ onMounted(() => {
             </div>
         </form>
     </Modal>
+
+    <!-- Confirm Delete Modal -->
+    <ConfirmDeleteModal 
+      :isOpen="isDeleteModalOpen" 
+      :itemName="itemToDeleteName"
+      @close="isDeleteModalOpen = false"
+      @confirm="executeDelete"
+    />
   </div>
 </template>
 
@@ -512,14 +636,16 @@ select.form-input option {
 }
 
 .icon-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 1.1rem;
-    transition: transform 0.2s;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.icon-btn:hover {
-    transform: scale(1.2);
+.artist-row {
+    background: rgba(255,255,255,0.03);
+    padding: 0.5rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
 }
 </style>

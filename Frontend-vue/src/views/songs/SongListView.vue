@@ -1,13 +1,17 @@
 <script setup>
 import { ref, onMounted, reactive, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { songService } from '../../services/song.service';
 import { artistService } from '../../services/artist.service';
 import SongItem from '../../components/songs/SongItem.vue';
 import Modal from '../../components/common/Modal.vue';
+import ConfirmDeleteModal from '../../components/common/ConfirmDeleteModal.vue';
 
 const songs = ref([]);
 const loading = ref(true);
 const error = ref(null);
+
+const route = useRoute();
 
 const pagination = reactive({
   page: 1,
@@ -19,7 +23,7 @@ const pagination = reactive({
 const filters = reactive({
   title: '',
   artist_name: '',
-  artist_id: ''
+  artist_id: route.query.artist_id || ''
 });
 
 const searchArtists = ref([]); // For the combo box filter
@@ -79,8 +83,7 @@ const songForm = reactive({
   id: null,
   title: '',
   duration: 0,
-  artist_id: '',
-  role: 'main'
+  artists: []
 });
 
 const fetchAvailableArtists = async () => {
@@ -95,7 +98,7 @@ const fetchAvailableArtists = async () => {
 
 const openCreateModal = async () => {
   isEditing.value = false;
-  Object.assign(songForm, { id: null, title: '', duration: 0, artist_id: '', role: 'main' });
+  Object.assign(songForm, { id: null, title: '', duration: 0, artists: [{ artist_id: '', role: 'main' }] });
   formError.value = null;
   if(availableArtists.value.length === 0) await fetchAvailableArtists();
   isModalOpen.value = true;
@@ -103,12 +106,16 @@ const openCreateModal = async () => {
 
 const handleEdit = async (song) => {
   isEditing.value = true;
+  
+  const initialArtists = song.artists && song.artists.length > 0 
+    ? song.artists.map(a => ({ artist_id: a.id || a.artist_id, role: a.role }))
+    : [{ artist_id: '', role: 'main' }];
+
   Object.assign(songForm, {
     id: song.id,
     title: song.title,
     duration: song.duration,
-    artist_id: song.artists && song.artists.length > 0 ? song.artists[0].id : '',
-    role: song.artists && song.artists.length > 0 ? song.artists[0].role : 'main'
+    artists: [...initialArtists]
   });
   formError.value = null;
   if(availableArtists.value.length === 0) await fetchAvailableArtists();
@@ -122,11 +129,14 @@ const saveSong = async () => {
       title: songForm.title,
       duration: Number(songForm.duration)
     };
-    if (songForm.artist_id) {
-       payload.artists = [{
-           artist_id: Number(songForm.artist_id),
-           role: songForm.role
-       }];
+    
+    // Filter out rows without a selected artist
+    const validArtists = songForm.artists
+        .filter(a => a.artist_id)
+        .map(a => ({ artist_id: Number(a.artist_id), role: a.role }));
+        
+    if (validArtists.length > 0) {
+       payload.artists = validArtists;
     }
 
     if (isEditing.value) {
@@ -142,16 +152,33 @@ const saveSong = async () => {
   }
 };
 
-const handleDelete = async (id) => {
-  if (confirm('¿Estás seguro de que quieres eliminar esta canción?')) {
+const isDeleteModalOpen = ref(false);
+const itemToDeleteId = ref(null);
+const itemToDeleteName = ref('');
+
+const handleDelete = (id, title) => {
+  itemToDeleteId.value = id;
+  itemToDeleteName.value = title || 'esta canción';
+  isDeleteModalOpen.value = true;
+};
+
+const removeArtist = (index) => {
+    songForm.artists.splice(index, 1);
+};
+
+const addArtist = () => {
+    songForm.artists.push({ artist_id: '', role: 'main' });
+};
+
+const executeDelete = async () => {
     try {
-      await songService.delete(id);
-      songs.value = songs.value.filter(s => s.id !== id);
+      await songService.delete(itemToDeleteId.value);
+      songs.value = songs.value.filter(s => s.id !== itemToDeleteId.value);
+      isDeleteModalOpen.value = false;
     } catch(err) {
       console.error(err);
       alert('Error eliminando la canción');
     }
-  }
 };
 
 onMounted(() => {
@@ -195,7 +222,7 @@ onMounted(() => {
         :song="song"
         :index="index"
         @edit="handleEdit"
-        @delete="handleDelete"
+        @delete="handleDelete(song.id, song.title)"
       />
       <div v-if="songs.length === 0" class="empty-state">
         No se encontraron canciones.
@@ -230,23 +257,36 @@ onMounted(() => {
           <input type="number" v-model="songForm.duration" class="form-input" required min="1" />
         </div>
 
-        <div class="form-group">
-          <label>Artista Principal (Opcional en Creación)</label>
-          <select v-model="songForm.artist_id" class="form-input">
-            <option value="">Selecciona un Artista</option>
-            <option v-for="artist in availableArtists" :key="artist.id" :value="artist.id">
-              {{ artist.name }}
-            </option>
-          </select>
-        </div>
-
-        <div class="form-group" v-if="songForm.artist_id">
-            <label>Rol del Artista</label>
-            <select v-model="songForm.role" class="form-input">
-                <option value="main">Main (Principal)</option>
-                <option value="ft">Featuring (Invitado)</option>
-                <option value="producer">Productor</option>
-            </select>
+        <div class="form-group mb-4">
+          <div class="flex justify-between items-center mb-2">
+            <label class="mb-0">Artistas (Opcional)</label>
+            <button type="button" class="btn btn-secondary btn-sm" @click="addArtist">+ Agregar Artista</button>
+          </div>
+          
+          <div v-for="(artistEntry, index) in songForm.artists" :key="index" class="artist-row flex gap-2 mb-2 items-start">
+              <div class="flex-1">
+                  <select v-model="artistEntry.artist_id" class="form-input" required>
+                    <option value="">Selecciona un Artista</option>
+                    <option v-for="artist in availableArtists" :key="artist.id" :value="artist.id">
+                      {{ artist.name }}
+                    </option>
+                  </select>
+              </div>
+              <div class="w-1/3">
+                  <select v-model="artistEntry.role" class="form-input">
+                      <option value="main">Main (Principal)</option>
+                      <option value="ft">Featuring (Invitado)</option>
+                      <option value="producer">Productor</option>
+                  </select>
+              </div>
+              <button 
+                  v-if="songForm.artists.length > 1" 
+                  type="button" 
+                  class="btn btn-danger icon-btn" 
+                  @click="removeArtist(index)">
+                  🗑️
+              </button>
+          </div>
         </div>
 
         <div class="form-actions">
@@ -255,6 +295,14 @@ onMounted(() => {
         </div>
       </form>
     </Modal>
+
+    <!-- Confirm Delete Modal -->
+    <ConfirmDeleteModal 
+      :isOpen="isDeleteModalOpen" 
+      :itemName="itemToDeleteName"
+      @close="isDeleteModalOpen = false"
+      @confirm="executeDelete"
+    />
   </div>
 </template>
 
@@ -351,5 +399,30 @@ select.form-input option {
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.flex { display: flex; }
+.justify-between { justify-content: space-between; }
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.gap-2 { gap: 0.5rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-4 { margin-bottom: 1rem; }
+.mb-0 { margin-bottom: 0 !important; }
+.flex-1 { flex: 1; }
+.w-1\/3 { width: 33.333333%; }
+
+.artist-row {
+    background: rgba(255,255,255,0.03);
+    padding: 0.5rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+}
+
+.icon-btn {
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 </style>

@@ -3,6 +3,7 @@ import { ref, onMounted, reactive, watch } from 'vue';
 import { artistService } from '../../services/artist.service';
 import ArtistCard from '../../components/artists/ArtistCard.vue';
 import Modal from '../../components/common/Modal.vue';
+import ConfirmDeleteModal from '../../components/common/ConfirmDeleteModal.vue';
 
 const artists = ref([]);
 const loading = ref(true);
@@ -103,16 +104,25 @@ const saveArtist = async () => {
   }
 };
 
-const handleDelete = async (id) => {
-  if(confirm('¿Estás seguro de que quieres eliminar este artista?')) {
+const isDeleteModalOpen = ref(false);
+const itemToDeleteId = ref(null);
+const itemToDeleteName = ref('');
+
+const handleDelete = (id, name) => {
+  itemToDeleteId.value = id;
+  itemToDeleteName.value = name || 'este artista';
+  isDeleteModalOpen.value = true;
+};
+
+const executeDelete = async () => {
     try {
-      await artistService.delete(id);
-      artists.value = artists.value.filter(a => a.id !== id);
+      await artistService.delete(itemToDeleteId.value);
+      artists.value = artists.value.filter(a => a.id !== itemToDeleteId.value);
+      isDeleteModalOpen.value = false;
     } catch(err) {
       console.error(err);
       alert('Error eliminando el artista');
     }
-  }
 };
 
 onMounted(() => {
@@ -145,7 +155,7 @@ onMounted(() => {
         :key="artist.id" 
         :artist="artist"
         @edit="handleEdit"
-        @delete="handleDelete"
+        @delete="handleDelete(artist.id, artist.name)"
       />
     </div>
 
@@ -192,6 +202,14 @@ onMounted(() => {
         </div>
       </form>
     </Modal>
+
+    <!-- Confirm Delete Modal -->
+    <ConfirmDeleteModal 
+      :isOpen="isDeleteModalOpen" 
+      :itemName="itemToDeleteName"
+      @close="isDeleteModalOpen = false"
+      @confirm="executeDelete"
+    />
   </div>
 </template>
 

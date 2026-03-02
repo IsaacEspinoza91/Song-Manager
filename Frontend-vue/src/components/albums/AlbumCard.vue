@@ -5,6 +5,10 @@ const props = defineProps({
   album: {
     type: Object,
     required: true
+  },
+  readonly: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -21,7 +25,7 @@ const primaryArtist = computed(() => {
 </script>
 
 <template>
-  <div class="album-card glass-panel">
+  <div class="album-card glass-panel" @click="$router.push(`/albums/${album.id}`)">
     <div class="cover-wrapper">
       <img v-if="album.cover_url" :src="album.cover_url" :alt="album.title" class="cover-image" />
       <div v-else class="placeholder-cover">
@@ -34,7 +38,7 @@ const primaryArtist = computed(() => {
       <p class="artist">{{ primaryArtist }}</p>
       <div class="meta">
         <span class="year">{{ releaseYear }}</span>
-        <div class="actions">
+        <div class="actions" v-if="!readonly">
           <button class="icon-btn" @click.stop="$emit('edit', album)">✏️</button>
           <button class="icon-btn" @click.stop="$emit('delete', album.id)">🗑️</button>
         </div>

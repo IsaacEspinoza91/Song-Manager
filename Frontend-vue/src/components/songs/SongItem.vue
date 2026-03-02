@@ -9,6 +9,10 @@ const props = defineProps({
   index: {
     type: Number,
     required: false
+  },
+  readonly: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -32,7 +36,7 @@ const displayArtists = computed(() => {
       <p class="artists">{{ displayArtists }}</p>
     </div>
     <div class="duration">{{ formatDuration(song.duration) }}</div>
-    <div class="actions">
+    <div class="actions" v-if="!readonly">
        <button class="icon-btn" @click="$emit('edit', song)" title="Edit">✏️</button>
        <button class="icon-btn danger" @click="$emit('delete', song.id)" title="Delete">🗑️</button>
     </div>

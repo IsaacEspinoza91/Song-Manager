@@ -239,6 +239,41 @@ func (r *artistRepository) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
+// Get artistas segun busqueda de nombre
+func (r *artistRepository) SearchArtists(ctx context.Context, searchTerm string) ([]domain.ArtistSeachResult, error) {
+	query := `
+		SELECT 
+			a.id, 
+			a.name
+		FROM artists a
+		WHERE (a.name % $1 OR a.country % $1)
+		ORDER BY similarity(a.name, $1) DESC
+		LIMIT 15;
+	`
+
+	rows, err := r.db.Query(ctx, query, searchTerm)
+	if err != nil {
+		return nil, fmt.Errorf("error buscando artistas: %w", err)
+	}
+	defer rows.Close()
+
+	var results []domain.ArtistSeachResult
+	for rows.Next() {
+		var res domain.ArtistSeachResult
+		err := rows.Scan(&res.ID, &res.ArtistName)
+		if err != nil {
+			return nil, fmt.Errorf("error al escanear fila: %w", err)
+		}
+
+		results = append(results, res)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterando artistas: %w", err)
+	}
+
+	return results, nil
+}
+
 // Nota que las transacciones se usan cuando se van a ejecutar 2 o mas operaciones sql
 // Para una operacion simple (1 query) no es necesario porque en si ya es una transaccion implicita
 

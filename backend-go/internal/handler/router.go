@@ -23,6 +23,7 @@ func NewRouter(artistService domain.ArtistService, songService domain.SongServic
 	mux.HandleFunc("GET /artists/{id}", artistHandler.GetByID)
 	mux.HandleFunc("PUT /artists/{id}", artistHandler.Update)
 	mux.HandleFunc("DELETE /artists/{id}", artistHandler.Delete)
+	mux.HandleFunc("GET /artists/search", artistHandler.SearchArtists)
 
 	mux.HandleFunc("POST /songs", songHandler.Create)
 	mux.HandleFunc("GET /songs/{id}", songHandler.GetByID)
@@ -32,6 +33,7 @@ func NewRouter(artistService domain.ArtistService, songService domain.SongServic
 	mux.HandleFunc("DELETE /songs/{id}", songHandler.Delete)
 	mux.HandleFunc("DELETE /songs/{id}/artist/{artist_id}", songHandler.RemoveArtist)
 	mux.HandleFunc("POST /songs/{id}/artist", songHandler.AddArtist)
+	mux.HandleFunc("GET /song/search", songHandler.SearchSongs)
 
 	mux.HandleFunc("POST /albums", albumHandler.Create)
 	mux.HandleFunc("GET /albums/{id}", albumHandler.GetByID)

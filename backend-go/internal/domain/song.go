@@ -43,6 +43,17 @@ type SongFilter struct {
 	ArtistName string
 }
 
+type ArtistsSongSearchResult struct {
+	ArtistID   int    `json:"artist_id"`
+	ArtistName string `json:"artist_name"`
+}
+
+type SongSearchResult struct {
+	ID      int                       `json:"id"`
+	Title   string                    `json:"title"`
+	Artists []ArtistsSongSearchResult `json:"artists"`
+}
+
 // VALIDACIONES
 func (input *ArtistSongInput) Sanitize() {
 	input.Role = validation.SanitizeString(input.Role)
@@ -114,6 +125,7 @@ type SongRepository interface {
 	Delete(ctx context.Context, id int64) error
 	AddArtist(ctx context.Context, songID int64, input *ArtistSongInput) error
 	RemoveArtist(ctx context.Context, songID, artistID int64) error
+	SearchSongs(ctx context.Context, searchTerm string) ([]SongSearchResult, error)
 }
 
 type SongService interface {
@@ -125,4 +137,5 @@ type SongService interface {
 	Delete(ctx context.Context, id int64) error
 	AddArtist(ctx context.Context, songID int64, input *ArtistSongInput) error
 	RemoveArtist(ctx context.Context, songID, artistID int64) error
+	SearchSongs(ctx context.Context, searchTerm string) ([]SongSearchResult, error)
 }

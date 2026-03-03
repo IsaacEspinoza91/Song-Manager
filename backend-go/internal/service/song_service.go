@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/IsaacEspinoza91/Song-Manager/internal/domain"
+	"github.com/IsaacEspinoza91/Song-Manager/pkg/validation"
 )
 
 type songService struct {
@@ -85,4 +86,9 @@ func (s *songService) RemoveArtist(ctx context.Context, songID, artistID int64) 
 	}
 
 	return s.repo.RemoveArtist(ctx, songID, artistID)
+}
+
+func (s *songService) SearchSongs(ctx context.Context, searchTerm string) ([]domain.SongSearchResult, error) {
+	searchTerm = validation.SanitizeString(searchTerm)
+	return s.repo.SearchSongs(ctx, searchTerm)
 }

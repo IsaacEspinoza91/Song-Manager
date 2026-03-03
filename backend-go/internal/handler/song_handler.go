@@ -131,7 +131,23 @@ func (h *SongHandler) GetAllPaginated(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, paginatedData) // 200
 }
 
-// UPDATE (PUT /artist/{id})
+// GET by busqueda de nombre (GET /song/search?q=)
+func (h *SongHandler) SearchSongs(w http.ResponseWriter, r *http.Request) {
+	searchTerm := r.URL.Query().Get("q")
+	songs, err := h.service.SearchSongs(r.Context(), searchTerm)
+	if err != nil {
+		log.Printf("[ERROR INTERNO en Handler] %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Error interno obteniendo canciones", nil)
+	}
+	// Slice vacio sino hay canciones
+	if songs == nil {
+		songs = []domain.SongSearchResult{}
+	}
+
+	WriteJSON(w, http.StatusOK, songs) // 200
+}
+
+// UPDATE (PUT /songs/{id})
 func (h *SongHandler) Update(w http.ResponseWriter, r *http.Request) {
 	idString := r.PathValue("id")
 	id, err := strconv.ParseInt(idString, 10, 54)
@@ -179,7 +195,7 @@ func (h *SongHandler) Update(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, song)
 }
 
-// DELETE (DELETE /artist/{id})
+// DELETE (DELETE /songs/{id})
 func (h *SongHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	idString := r.PathValue("id")
 	id, err := strconv.ParseInt(idString, 10, 54)

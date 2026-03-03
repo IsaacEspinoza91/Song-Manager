@@ -39,6 +39,11 @@ type ArtistFilter struct {
 	Country string
 }
 
+type ArtistSeachResult struct {
+	ID         int    `json:"id"`
+	ArtistName string `json:"artist_name"`
+}
+
 // VALIDACIONES Y LIMPIEZA
 func (input *ArtistFilter) Sanitize() {
 	input.Name = validation.SanitizeString(input.Name)
@@ -96,6 +101,7 @@ type ArtistRepository interface {
 	GetAllPaginated(ctx context.Context, filter ArtistFilter, params PaginationParams) (*PaginatedResult[Artist], error)
 	GetByID(ctx context.Context, id int64) (*Artist, error)
 	Delete(ctx context.Context, id int64) error
+	SearchArtists(ctx context.Context, searchTerm string) ([]ArtistSeachResult, error)
 }
 
 type ArtistService interface {
@@ -105,4 +111,5 @@ type ArtistService interface {
 	GetAllPaginated(ctx context.Context, filter ArtistFilter, params PaginationParams) (*PaginatedResult[Artist], error)
 	GetByID(ctx context.Context, id int64) (*Artist, error)
 	Delete(ctx context.Context, id int64) error
+	SearchArtists(ctx context.Context, searchTerm string) ([]ArtistSeachResult, error)
 }

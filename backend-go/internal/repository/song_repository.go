@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -426,4 +427,50 @@ func (r *songRepository) RemoveArtist(ctx context.Context, songID, artistID int6
 		return domain.ErrArtistNotFound
 	}
 	return nil
+}
+
+// Get song con artist segun busqueda de texto. Util para combo box
+func (r *songRepository) SearchSongs(ctx context.Context, searchTerm string) ([]domain.SongSearchResult, error) {
+	query := `
+		SELECT 
+			s.id, 
+			s.title, 
+			jsonb_agg(jsonb_build_object('artist_id', a.id, 'artist_name', a.name)) as artists
+		FROM songs s
+		JOIN song_artists sa ON s.id = sa.song_id
+		JOIN artists a ON sa.artist_id = a.id
+		WHERE (s.title % $1 OR a.name % $1)
+		GROUP BY s.id, s.title
+		ORDER BY similarity(s.title, $1) DESC
+		LIMIT 15;
+	`
+
+	rows, err := r.db.Query(ctx, query, searchTerm)
+	if err != nil {
+		return nil, fmt.Errorf("error buscando canciones: %w", err)
+	}
+	defer rows.Close()
+
+	var results []domain.SongSearchResult
+	for rows.Next() {
+		var res domain.SongSearchResult
+		var artistsJSON []byte // Variable temporal para el JSON de la DB
+
+		err := rows.Scan(&res.ID, &res.Title, &artistsJSON)
+		if err != nil {
+			return nil, fmt.Errorf("error al escanear fila: %w", err)
+		}
+
+		// Deserializamos el JSON directamente al slice de artistas del DTO
+		if err := json.Unmarshal(artistsJSON, &res.Artists); err != nil {
+			return nil, fmt.Errorf("error al parsear artistas: %w", err)
+		}
+
+		results = append(results, res)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterando canciones: %w", err)
+	}
+
+	return results, nil
 }

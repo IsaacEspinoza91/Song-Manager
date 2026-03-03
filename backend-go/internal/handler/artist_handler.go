@@ -94,6 +94,22 @@ func (h *ArtistHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, artist) // 200 OK
 }
 
+// GET busqueda de nombre (GET /artist/search?q)
+func (h *ArtistHandler) SearchArtists(w http.ResponseWriter, r *http.Request) {
+	searchTerm := r.URL.Query().Get("q")
+	artists, err := h.service.SearchArtists(r.Context(), searchTerm)
+	if err != nil {
+		log.Printf("[ERROR INTERNO en Handler] %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Error interno obteniendo canciones", nil)
+	}
+
+	if artists == nil {
+		artists = []domain.ArtistSeachResult{}
+	}
+
+	WriteJSON(w, http.StatusOK, artists) // 200
+}
+
 // GET ALL PAG (GET /artists?page=2&limit=5&genre=rock&country=chile?name=  bad)
 func (h *ArtistHandler) GetAllPaginated(w http.ResponseWriter, r *http.Request) {
 	// Extraer query params

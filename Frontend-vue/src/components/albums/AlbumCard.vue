@@ -17,12 +17,11 @@ const releaseYear = computed(() => {
   return new Date(props.album.release_date).getFullYear();
 });
 
-const primaryArtist = computed(() => {
-  if (!props.album.artists || props.album.artists.length === 0) return 'Artista Desconocido';
+const primaryArtistsList = computed(() => {
+  if (!props.album.artists || props.album.artists.length === 0) return [];
   // Get all primary artists, or default to all artists if none are marked primary
   const primaries = props.album.artists.filter(a => a.is_primary);
-  const targetArray = primaries.length > 0 ? primaries : props.album.artists;
-  return targetArray.map(a => a.name).join(', ');
+  return primaries.length > 0 ? primaries : props.album.artists;
 });
 </script>
 
@@ -37,7 +36,16 @@ const primaryArtist = computed(() => {
     </div>
     <div class="details">
       <h3 class="title">{{ album.title }}</h3>
-      <p class="artist">{{ primaryArtist }}</p>
+      <p class="artist">
+          <span v-if="!primaryArtistsList.length">Artista Desconocido</span>
+          <template v-else>
+              <template v-for="(artist, index) in primaryArtistsList" :key="artist.id || artist.artist_id || index">
+                  <router-link :to="`/artists/${artist.id || artist.artist_id}`" class="artist-link" @click.stop>
+                      {{ artist.name || artist.artist_name }}
+                  </router-link><span v-if="index < primaryArtistsList.length - 1">, </span>
+              </template>
+          </template>
+      </p>
       <div class="meta">
         <span class="year">{{ releaseYear }}</span>
         <div class="actions" v-if="!readonly">
@@ -131,6 +139,17 @@ const primaryArtist = computed(() => {
   font-size: 0.9rem;
   color: var(--text-secondary);
   margin-bottom: 0.75rem;
+}
+
+.artist-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.artist-link:hover {
+  text-decoration: underline;
+  color: var(--text-primary);
 }
 
 .meta {

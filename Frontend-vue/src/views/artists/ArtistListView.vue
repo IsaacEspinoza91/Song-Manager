@@ -1,9 +1,10 @@
 <script setup>
-import { ref, onMounted, reactive, watch } from 'vue';
+import { ref, onMounted, onUnmounted, reactive, watch } from 'vue';
 import { artistService } from '../../services/artist.service';
 import ArtistCard from '../../components/artists/ArtistCard.vue';
 import Modal from '../../components/common/Modal.vue';
 import ConfirmDeleteModal from '../../components/common/ConfirmDeleteModal.vue';
+import Pagination from '../../components/common/Pagination.vue';
 
 const artists = ref([]);
 const loading = ref(true);
@@ -15,6 +16,30 @@ const pagination = reactive({
   total_pages: 1,
   total_items: 0
 });
+
+const viewContainer = ref(null);
+
+const calculateLimit = () => {
+    if (!viewContainer.value) return 10;
+    const width = viewContainer.value.clientWidth;
+    // Calculate columns based on minmax(240px) + gap(24px)
+    let cols = Math.floor((width + 24) / 264);
+    if (cols < 1) cols = 1;
+    return cols * 2; // 2 rows
+};
+
+let resizeTimer;
+const handleResize = () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+        const newLimit = calculateLimit();
+        if (newLimit !== pagination.limit && newLimit > 0) {
+            pagination.limit = newLimit;
+            pagination.page = 1; // Reset to page 1 to avoid offset bugs
+            fetchArtists();
+        }
+    }, 300);
+};
 
 const filters = reactive({
   name: '',
@@ -50,8 +75,7 @@ const handleSearch = () => {
   fetchArtists();
 };
 
-const changePage = (delta) => {
-  const newPage = pagination.page + delta;
+const changePage = (newPage) => {
   if (newPage >= 1 && newPage <= pagination.total_pages) {
     pagination.page = newPage;
     fetchArtists();
@@ -126,12 +150,18 @@ const executeDelete = async () => {
 };
 
 onMounted(() => {
+  pagination.limit = calculateLimit();
   fetchArtists();
+  window.addEventListener('resize', handleResize);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize);
 });
 </script>
 
 <template>
-  <div class="artists-view">
+  <div class="artists-view" ref="viewContainer">
     <div class="header">
       <h1 class="gradient-text">Artistas</h1>
       <button class="btn btn-primary" @click="openCreateModal">Nuevo Artista</button>
@@ -160,17 +190,13 @@ onMounted(() => {
     </div>
 
     <!-- Controles de Paginación -->
-    <div v-if="!loading && !error && artists.length > 0" class="pagination">
-      <button class="btn btn-secondary" :disabled="pagination.page === 1" @click="changePage(-1)">
-        Anterior
-      </button>
-      <span class="page-info">
-        Página {{ pagination.page }} de {{ pagination.total_pages }} ({{ pagination.total_items }} elementos)
-      </span>
-      <button class="btn btn-secondary" :disabled="pagination.page === pagination.total_pages" @click="changePage(1)">
-        Siguiente
-      </button>
-    </div>
+    <Pagination 
+      v-if="!loading && !error && artists.length > 0"
+      :currentPage="pagination.page"
+      :totalPages="pagination.total_pages"
+      :totalItems="pagination.total_items"
+      @page-change="changePage"
+    />
 
     <!-- Modal Form -->
     <Modal :isOpen="isModalOpen" @close="isModalOpen = false" :title="isEditing ? 'Editar Artista' : 'Nuevo Artista'">
@@ -273,22 +299,4 @@ h1 {
   flex-shrink: 0;
 }
 
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1.5rem;
-  margin-top: 3rem;
-  padding-bottom: 2rem;
-}
-
-.page-info {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 </style>

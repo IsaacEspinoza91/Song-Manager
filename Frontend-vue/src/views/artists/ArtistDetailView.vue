@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, reactive } from 'vue';
+import { ref, onMounted, computed, reactive, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { artistService } from '../../services/artist.service';
 import { songService } from '../../services/song.service';
@@ -13,7 +13,13 @@ import SearchSelect from '../../components/common/SearchSelect.vue';
 
 const route = useRoute();
 const router = useRouter();
-const artistId = route.params.id;
+const artistId = computed(() => route.params.id);
+
+watch(artistId, (newId) => {
+  if (newId) {
+    fetchData();
+  }
+});
 
 const loading = ref(true);
 const error = ref(null);
@@ -37,13 +43,13 @@ const formatDate = (dateString) => {
 const fetchData = async () => {
   loading.value = true;
   try {
-    const artistResp = await artistService.getById(artistId);
+    const artistResp = await artistService.getById(artistId.value);
     artist.value = artistResp.data || artistResp;
 
-    const songsResp = await songService.getPaginated({ artist_id: artistId, limit: 5 });
+    const songsResp = await songService.getPaginated({ artist_id: artistId.value, limit: 5 });
     songs.value = songsResp.data || [];
 
-    const albumsResp = await albumService.getByArtistId(artistId);
+    const albumsResp = await albumService.getByArtistId(artistId.value);
     albums.value = albumsResp.data || albumsResp || [];
 
   } catch(err) {
@@ -55,7 +61,7 @@ const fetchData = async () => {
 };
 
 const goToAllSongs = () => {
-    router.push({ path: '/songs', query: { artist_id: artistId } });
+    router.push({ path: '/songs', query: { artist_id: artistId.value } });
 };
 
 // ========================
@@ -102,7 +108,7 @@ const saveSong = async () => {
     isSongModalOpen.value = false;
     
     // Refresh songs for this artist
-    const songsResp = await songService.getPaginated({ artist_id: artistId, limit: 5 });
+    const songsResp = await songService.getPaginated({ artist_id: artistId.value, limit: 5 });
     songs.value = songsResp.data || [];
   } catch (err) {
     console.error(err);
@@ -126,11 +132,11 @@ const executeDelete = async () => {
     try {
         if (isAlbumDelete.value) {
             await albumService.delete(itemToDeleteId.value);
-            const albumsResp = await albumService.getByArtistId(artistId);
+            const albumsResp = await albumService.getByArtistId(artistId.value);
             albums.value = albumsResp.data || albumsResp || [];
         } else {
             await songService.delete(itemToDeleteId.value);
-            const songsResp = await songService.getPaginated({ artist_id: artistId, limit: 5 });
+            const songsResp = await songService.getPaginated({ artist_id: artistId.value, limit: 5 });
             songs.value = songsResp.data || [];
         }
         isDeleteModalOpen.value = false;
@@ -167,10 +173,10 @@ const openCreateAlbum = () => {
         release_date: '',
         type: 'LP',
         cover_url: '',
-        artist_id: artistId,
+        artist_id: artistId.value,
         artist_name: artist.value ? artist.value.name : '',
         is_primary: true,
-        artists: [{ artist_id: artistId, is_primary: true }]
+        artists: [{ artist_id: artistId.value, is_primary: true }]
     });
     albumFormError.value = null;
     isAlbumModalOpen.value = true;
@@ -222,7 +228,7 @@ const saveAlbum = async () => {
     isAlbumModalOpen.value = false;
     
     // Refresh albums for this artist
-    const albumsResp = await albumService.getByArtistId(artistId);
+    const albumsResp = await albumService.getByArtistId(artistId.value);
     albums.value = albumsResp.data || albumsResp || [];
   } catch (err) {
     console.error(err);

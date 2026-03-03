@@ -386,7 +386,8 @@ BEGIN
     new_songs AS (
         INSERT INTO songs (title, duration) VALUES 
         ('ROMPECABEZAS', 153), ('FUGAZI', 212), ('NADIE TEKITA', 188), ('FREDDY', 192), 
-        ('DEYANDEL', 187), ('FANTASSYY', 179)
+        ('DEYANDEL', 187), ('FANTASSYY', 179), ('BANDI2', 189), ('CONTIGO/CONMIGO', 159), ('KIMYE', 193), 
+        ('UN RATITO+', 109), ('LAS OLAS', 236), ('DE ELLA PARA MÍ', 168)
         RETURNING id
     ),
     relate_album AS (
@@ -438,8 +439,7 @@ BEGIN
         INSERT INTO songs (title, duration) VALUES 
         ('Mood', 155), ('Airbag', 169), ('Whyme?', 209), ('Fentanyl', 94), ('Ya entregamos el depa', 204), 
         ('Paquepu', 130), ('Shiny', 158), ('Wtfff.', 132), ('Bruce Wayne', 137), ('Zundada de fondo', 178), 
-        ('Rush', 161), ('Ojos empapados', 149), ('BANDI2', 189), ('CONTIGO/CONMIGO', 159), ('KIMYE', 193), 
-        ('UN RATITO+', 109), ('LAS OLAS', 236), ('DE ELLA PARA MÍ', 168)
+        ('Rush', 161), ('Ojos empapados', 149)
         RETURNING id
     ),
     relate_album AS (

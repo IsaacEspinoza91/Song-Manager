@@ -7,6 +7,7 @@ import SongItem from '../../components/songs/SongItem.vue';
 import Modal from '../../components/common/Modal.vue';
 import ConfirmDeleteModal from '../../components/common/ConfirmDeleteModal.vue';
 import SearchSelect from '../../components/common/SearchSelect.vue';
+import Pagination from '../../components/common/Pagination.vue';
 
 const songs = ref([]);
 const loading = ref(true);
@@ -56,8 +57,7 @@ const handleSearch = () => {
   fetchSongs();
 };
 
-const changePage = (delta) => {
-  const newPage = pagination.page + delta;
+const changePage = (newPage) => {
   if (newPage >= 1 && newPage <= pagination.total_pages) {
     pagination.page = newPage;
     fetchSongs();
@@ -218,17 +218,13 @@ onMounted(() => {
     </div>
 
     <!-- Controles de Paginación -->
-    <div v-if="!loading && !error && songs.length > 0" class="pagination">
-      <button class="btn btn-secondary" :disabled="pagination.page === 1" @click="changePage(-1)">
-        Anterior
-      </button>
-      <span class="page-info">
-        Página {{ pagination.page }} de {{ pagination.total_pages }} ({{ pagination.total_items }} elementos)
-      </span>
-      <button class="btn btn-secondary" :disabled="pagination.page === pagination.total_pages" @click="changePage(1)">
-        Siguiente
-      </button>
-    </div>
+    <Pagination 
+      v-if="!loading && !error && songs.length > 0"
+      :currentPage="pagination.page"
+      :totalPages="pagination.total_pages"
+      :totalItems="pagination.total_items"
+      @page-change="changePage"
+    />
 
     <!-- Modal Form -->
     <Modal :isOpen="isModalOpen" @close="isModalOpen = false" :title="isEditing ? 'Editar Canción' : 'Nueva Canción'">
@@ -370,25 +366,6 @@ select.form-input option {
 
 .shrink-btn {
   flex-shrink: 0;
-}
-
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1.5rem;
-  margin-top: 2rem;
-  padding-bottom: 2rem;
-}
-
-.page-info {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .flex { display: flex; }

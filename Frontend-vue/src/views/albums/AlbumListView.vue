@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, reactive, watch } from 'vue';
+import { ref, onMounted, onUnmounted, reactive, watch } from 'vue';
 import { albumService } from '../../services/album.service';
 import { artistService } from '../../services/artist.service';
 import { songService } from '../../services/song.service';
@@ -7,6 +7,7 @@ import AlbumCard from '../../components/albums/AlbumCard.vue';
 import Modal from '../../components/common/Modal.vue';
 import ConfirmDeleteModal from '../../components/common/ConfirmDeleteModal.vue';
 import SearchSelect from '../../components/common/SearchSelect.vue';
+import Pagination from '../../components/common/Pagination.vue';
 
 const albums = ref([]);
 const loading = ref(true);
@@ -18,6 +19,30 @@ const pagination = reactive({
   total_pages: 1,
   total_items: 0
 });
+
+const viewContainer = ref(null);
+
+const calculateLimit = () => {
+    if (!viewContainer.value) return 10;
+    const width = viewContainer.value.clientWidth;
+    // Calculate columns based on minmax(220px) + gap(32px)
+    let cols = Math.floor((width + 32) / 252);
+    if (cols < 1) cols = 1;
+    return cols * 2; // 2 rows
+};
+
+let resizeTimer;
+const handleResize = () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+        const newLimit = calculateLimit();
+        if (newLimit !== pagination.limit && newLimit > 0) {
+            pagination.limit = newLimit;
+            pagination.page = 1; // Reset to page 1
+            fetchAlbums();
+        }
+    }, 300);
+};
 
 const filters = reactive({
   title: '',
@@ -56,8 +81,7 @@ const handleSearch = () => {
   fetchAlbums();
 };
 
-const changePage = (delta) => {
-  const newPage = pagination.page + delta;
+const changePage = (newPage) => {
   if (newPage >= 1 && newPage <= pagination.total_pages) {
     pagination.page = newPage;
     fetchAlbums();
@@ -285,13 +309,19 @@ const removeTrack = (songId) => {
 };
 
 onMounted(() => {
+  pagination.limit = calculateLimit();
   fetchAlbums();
   loadArtistsForFilter();
+  window.addEventListener('resize', handleResize);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize);
 });
 </script>
 
 <template>
-  <div class="albums-view">
+  <div class="albums-view" ref="viewContainer">
     <div class="header">
       <h1 class="gradient-text">Álbumes</h1>
       <button class="btn btn-primary" @click="openCreateModal">Nuevo Álbum</button>
@@ -335,17 +365,13 @@ onMounted(() => {
     </div>
 
     <!-- Controles de Paginación -->
-    <div v-if="!loading && !error && albums.length > 0" class="pagination">
-      <button class="btn btn-secondary" :disabled="pagination.page === 1" @click="changePage(-1)">
-        Anterior
-      </button>
-      <span class="page-info">
-        Página {{ pagination.page }} de {{ pagination.total_pages }} ({{ pagination.total_items }} elementos)
-      </span>
-      <button class="btn btn-secondary" :disabled="pagination.page === pagination.total_pages" @click="changePage(1)">
-        Siguiente
-      </button>
-    </div>
+    <Pagination 
+      v-if="!loading && !error && albums.length > 0"
+      :currentPage="pagination.page"
+      :totalPages="pagination.total_pages"
+      :totalItems="pagination.total_items"
+      @page-change="changePage"
+    />
 
     <!-- Modal Form -->
     <Modal :isOpen="isModalOpen" @close="isModalOpen = false" :title="isEditing ? 'Editar Álbum' : 'Nuevo Álbum'">
@@ -569,25 +595,6 @@ select.form-input option {
 
 .shrink-btn {
   flex-shrink: 0;
-}
-
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1.5rem;
-  margin-top: 3rem;
-  padding-bottom: 2rem;
-}
-
-.page-info {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .album-card-wrapper {

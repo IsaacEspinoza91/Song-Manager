@@ -6,6 +6,7 @@ import { songService } from '../../services/song.service';
 import AlbumCard from '../../components/albums/AlbumCard.vue';
 import Modal from '../../components/common/Modal.vue';
 import ConfirmDeleteModal from '../../components/common/ConfirmDeleteModal.vue';
+import SearchSelect from '../../components/common/SearchSelect.vue';
 
 const albums = ref([]);
 const loading = ref(true);
@@ -77,7 +78,6 @@ const loadArtistsForFilter = async () => {
 const isModalOpen = ref(false);
 const isEditing = ref(false);
 const formError = ref(null);
-const availableArtists = ref([]);
 
 const albumForm = reactive({
   id: null,
@@ -90,14 +90,9 @@ const albumForm = reactive({
   showTracksForm: false
 });
 
-const fetchAvailableArtists = async () => {
-  try {
-    const resp = await artistService.getAll();
-    availableArtists.value = resp.data || resp;
-    if (availableArtists.value.data) availableArtists.value = availableArtists.value.data;
-  } catch(err) {
-    console.error('Could not load artists', err);
-  }
+const formatSongDisplay = (song) => {
+    const artistNames = song.artists ? song.artists.map(a => a.artist_name || a.name).join(', ') : '';
+    return artistNames ? `${song.title} - ${artistNames}` : song.title;
 };
 
 const openCreateModal = async () => {
@@ -113,8 +108,6 @@ const openCreateModal = async () => {
       showTracksForm: false
   });
   formError.value = null;
-  if(availableArtists.value.length === 0) await fetchAvailableArtists();
-  if(availableSongs.value.length === 0) await loadAvailableSongs();
   isModalOpen.value = true;
 };
 
@@ -122,8 +115,8 @@ const handleEdit = async (album) => {
   isEditing.value = true;
   
   const initialArtists = album.artists && album.artists.length > 0
-    ? album.artists.map(a => ({ artist_id: a.id || a.artist_id, is_primary: a.is_primary }))
-    : [{ artist_id: '', is_primary: true }];
+    ? album.artists.map(a => ({ artist_id: a.id || a.artist_id, artist_name: a.name || a.artist_name, is_primary: a.is_primary }))
+    : [{ artist_id: '', artist_name: '', is_primary: true }];
 
   Object.assign(albumForm, {
     id: album.id,
@@ -136,7 +129,6 @@ const handleEdit = async (album) => {
     showTracksForm: false
   });
   formError.value = null;
-  if(availableArtists.value.length === 0) await fetchAvailableArtists();
   isModalOpen.value = true;
 };
 
@@ -195,7 +187,7 @@ const handleDelete = (id, title) => {
 
 // Form UI handlers
 const addArtistEntry = () => {
-    albumForm.artists.push({ artist_id: '', is_primary: false });
+    albumForm.artists.push({ artist_id: '', artist_name: '', is_primary: false });
 };
 
 const removeArtistEntry = (index) => {
@@ -205,13 +197,13 @@ const removeArtistEntry = (index) => {
 const toggleTracksForm = () => {
     albumForm.showTracksForm = !albumForm.showTracksForm;
     if (albumForm.showTracksForm && albumForm.tracks.length === 0) {
-        albumForm.tracks.push({ song_id: '', track_number: 1 });
+        albumForm.tracks.push({ song_id: '', song_title: '', track_number: 1 });
     }
 };
 
 const addTrackEntry = () => {
     const nextNumber = albumForm.tracks.length + 1;
-    albumForm.tracks.push({ song_id: '', track_number: nextNumber });
+    albumForm.tracks.push({ song_id: '', song_title: '', track_number: nextNumber });
 };
 
 const removeTrackEntry = (index) => {
@@ -238,9 +230,9 @@ const executeDelete = async () => {
 const isManageTracksOpen = ref(false);
 const activeAlbum = ref(null);
 const albumTracks = ref([]);
-const availableSongs = ref([]);
 const trackForm = reactive({
   song_id: '',
+  song_title: '',
   track_number: 1
 });
 
@@ -249,7 +241,6 @@ const openManageTracks = async (album) => {
   formError.value = null;
   isManageTracksOpen.value = true;
   await loadAlbumTracks(album.id);
-  await loadAvailableSongs();
 };
 
 const loadAlbumTracks = async (albumId) => {
@@ -261,15 +252,6 @@ const loadAlbumTracks = async (albumId) => {
     } catch(err) {
         console.error('Failed to load tracks', err);
         formError.value = 'No se pudieron cargar las pistas del álbum.';
-    }
-};
-
-const loadAvailableSongs = async () => {
-    try {
-        const resp = await songService.getAll();
-        availableSongs.value = resp.data || resp;
-    } catch(err) {
-        console.error('Failed to load songs', err);
     }
 };
 
@@ -401,13 +383,15 @@ onMounted(() => {
           </div>
           
           <div v-for="(artistEntry, index) in albumForm.artists" :key="index" class="artist-row flex gap-2 mb-2 items-start">
-              <div class="flex-1">
-                  <select v-model="artistEntry.artist_id" class="form-input" required>
-                    <option value="">Selecciona un Artista</option>
-                    <option v-for="artist in availableArtists" :key="artist.id" :value="artist.id">
-                      {{ artist.name }}
-                    </option>
-                  </select>
+              <div class="flex-1" style="min-width: 0;">
+                  <SearchSelect 
+                      v-model="artistEntry.artist_id"
+                      :initialName="artistEntry.artist_name"
+                      :searchFn="artistService.search"
+                      :formatDisplay="(a) => a.artist_name || a.name"
+                      placeholder="Busca un artista..."
+                      @select="(item) => artistEntry.artist_name = (item.artist_name || item.name)"
+                  />
               </div>
               <div class="w-1/3">
                   <select v-model="artistEntry.is_primary" class="form-input">
@@ -436,13 +420,15 @@ onMounted(() => {
            
            <div v-if="albumForm.showTracksForm">
                <div v-for="(trackEntry, index) in albumForm.tracks" :key="`track-${index}`" class="artist-row flex gap-2 mb-2 items-start">
-                   <div class="flex-1">
-                      <select v-model="trackEntry.song_id" class="form-input" required>
-                          <option value="">Seleccionar canción...</option>
-                          <option v-for="song in availableSongs" :key="song.id" :value="song.id">
-                              {{ song.title }}
-                          </option>
-                      </select>
+                   <div class="flex-1" style="min-width: 0;">
+                      <SearchSelect 
+                          v-model="trackEntry.song_id"
+                          :initialName="trackEntry.song_title"
+                          :searchFn="songService.search"
+                          :formatDisplay="formatSongDisplay"
+                          placeholder="Busca una canción..."
+                          @select="(item) => trackEntry.song_title = formatSongDisplay(item)"
+                      />
                    </div>
                    <div class="w-1\/4">
                        <input type="number" v-model="trackEntry.track_number" class="form-input" required min="1" placeholder="Nº" />
@@ -489,12 +475,14 @@ onMounted(() => {
             <h4 class="mb-2 text-sm text-secondary">Agregar Pista</h4>
             <div class="form-group">
                 <label>Canción</label>
-                <select v-model="trackForm.song_id" class="form-input" required>
-                    <option value="">Seleccionar canción...</option>
-                    <option v-for="song in availableSongs" :key="song.id" :value="song.id">
-                        {{ song.title }}
-                    </option>
-                </select>
+                <SearchSelect 
+                    v-model="trackForm.song_id"
+                    :initialName="trackForm.song_title"
+                    :searchFn="songService.search"
+                    :formatDisplay="formatSongDisplay"
+                    placeholder="Busca una canción..."
+                    @select="(item) => trackForm.song_title = formatSongDisplay(item)"
+                />
             </div>
             <div class="form-group flex gap-2">
                  <div class="w-1/3">

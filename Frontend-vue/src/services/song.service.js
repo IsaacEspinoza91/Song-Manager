@@ -13,6 +13,12 @@ export const songService = {
         return response.json();
     },
 
+    async search(query) {
+        const response = await fetch(`${API_URL}/songs/search?q=${encodeURIComponent(query)}`);
+        if (!response.ok) throw new Error('Network response was not ok');
+        return response.json();
+    },
+
     async getPaginated(params = { page: 1, limit: 10, title: '', artist_id: '', artist_name: '' }) {
         const query = new URLSearchParams(params).toString();
         const response = await fetch(`${API_URL}/songs?${query}`);

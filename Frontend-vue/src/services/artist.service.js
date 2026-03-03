@@ -8,8 +8,13 @@ export const artistService = {
     },
 
     async getAll() {
-        // According to instructions: GET /artists/all
         const response = await fetch(`${API_URL}/artists/all`);
+        if (!response.ok) throw new Error('Network response was not ok');
+        return response.json();
+    },
+
+    async search(query) {
+        const response = await fetch(`${API_URL}/artists/search?q=${encodeURIComponent(query)}`);
         if (!response.ok) throw new Error('Network response was not ok');
         return response.json();
     },

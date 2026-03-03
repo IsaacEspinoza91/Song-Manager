@@ -9,6 +9,7 @@ import SongItem from '../../components/songs/SongItem.vue';
 import AlbumCard from '../../components/albums/AlbumCard.vue';
 import Modal from '../../components/common/Modal.vue';
 import ConfirmDeleteModal from '../../components/common/ConfirmDeleteModal.vue';
+import SearchSelect from '../../components/common/SearchSelect.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -19,9 +20,6 @@ const error = ref(null);
 const artist = ref(null);
 const songs = ref([]);
 const albums = ref([]);
-
-// Available artists for combo boxes in Modals
-const availableArtists = ref([]);
 
 const breadcrumbItems = computed(() => {
   return [
@@ -48,11 +46,6 @@ const fetchData = async () => {
     const albumsResp = await albumService.getByArtistId(artistId);
     albums.value = albumsResp.data || albumsResp || [];
 
-    // Preload available artists for the edit modals if needed later
-    const artistListResp = await artistService.getAll();
-    availableArtists.value = artistListResp.data || artistListResp;
-    if (availableArtists.value.data) availableArtists.value = availableArtists.value.data;
-
   } catch(err) {
     console.error(err);
     error.value = 'No se pudieron cargar los datos del artista.';
@@ -75,6 +68,7 @@ const songForm = reactive({
   title: '',
   duration: 0,
   artist_id: '',
+  artist_name: '',
   role: 'main'
 });
 
@@ -84,6 +78,7 @@ const handleEditSong = (song) => {
     title: song.title,
     duration: song.duration,
     artist_id: song.artists && song.artists.length > 0 ? song.artists[0].id : '',
+    artist_name: song.artists && song.artists.length > 0 ? song.artists[0].name || song.artists[0].artist_name : '',
     role: song.artists && song.artists.length > 0 ? song.artists[0].role : 'main'
   });
   songFormError.value = null;
@@ -155,11 +150,14 @@ const albumForm = reactive({
   type: 'LP',
   cover_url: '',
   artist_id: '',
+  artist_name: '',
   is_primary: true,
   artists: []
 });
 
 const isEditingAlbum = ref(false);
+const isAlbumModalOpen = ref(false);
+const albumFormError = ref(null);
 
 const openCreateAlbum = () => {
     isEditingAlbum.value = false;
@@ -170,6 +168,7 @@ const openCreateAlbum = () => {
         type: 'LP',
         cover_url: '',
         artist_id: artistId,
+        artist_name: artist.value ? artist.value.name : '',
         is_primary: true,
         artists: [{ artist_id: artistId, is_primary: true }]
     });
@@ -186,6 +185,7 @@ const handleEditAlbum = (album) => {
     type: album.type || 'LP',
     cover_url: album.cover_url || '',
     artist_id: album.artists && album.artists.length > 0 ? album.artists[0].id : '',
+    artist_name: album.artists && album.artists.length > 0 ? album.artists[0].name || album.artists[0].artist_name : '',
     is_primary: album.artists && album.artists.length > 0 ? album.artists[0].is_primary : true
   });
   albumFormError.value = null;
@@ -327,12 +327,14 @@ onMounted(() => {
 
         <div class="form-group">
           <label>Artista Principal</label>
-          <select v-model="songForm.artist_id" class="form-input">
-            <option value="">Selecciona un Artista</option>
-            <option v-for="a in availableArtists" :key="a.id" :value="a.id">
-              {{ a.name }}
-            </option>
-          </select>
+          <SearchSelect 
+              v-model="songForm.artist_id"
+              :initialName="songForm.artist_name"
+              :searchFn="artistService.search"
+              :formatDisplay="(a) => a.artist_name || a.name"
+              placeholder="Busca un artista..."
+              @select="(item) => songForm.artist_name = (item.artist_name || item.name)"
+          />
         </div>
 
         <div class="form-group" v-if="songForm.artist_id">
@@ -382,12 +384,14 @@ onMounted(() => {
 
         <div class="form-group">
           <label>Artista Principal</label>
-          <select v-model="albumForm.artist_id" class="form-input" required>
-            <option value="">Selecciona un Artista</option>
-            <option v-for="a in availableArtists" :key="a.id" :value="a.id">
-              {{ a.name }}
-            </option>
-          </select>
+          <SearchSelect 
+              v-model="albumForm.artist_id"
+              :initialName="albumForm.artist_name"
+              :searchFn="artistService.search"
+              :formatDisplay="(a) => a.artist_name || a.name"
+              placeholder="Busca un artista..."
+              @select="(item) => albumForm.artist_name = (item.artist_name || item.name)"
+          />
         </div>
 
         <div class="form-actions">

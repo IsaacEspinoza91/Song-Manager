@@ -6,6 +6,7 @@ import { artistService } from '../../services/artist.service';
 import SongItem from '../../components/songs/SongItem.vue';
 import Modal from '../../components/common/Modal.vue';
 import ConfirmDeleteModal from '../../components/common/ConfirmDeleteModal.vue';
+import SearchSelect from '../../components/common/SearchSelect.vue';
 
 const songs = ref([]);
 const loading = ref(true);
@@ -78,7 +79,6 @@ const loadArtistsForFilter = async () => {
 const isModalOpen = ref(false);
 const isEditing = ref(false);
 const formError = ref(null);
-const availableArtists = ref([]);
 const songForm = reactive({
   id: null,
   title: '',
@@ -86,21 +86,10 @@ const songForm = reactive({
   artists: []
 });
 
-const fetchAvailableArtists = async () => {
-  try {
-    const resp = await artistService.getAll();
-    availableArtists.value = resp.data || resp; // API returns directly or inside data
-    if (availableArtists.value.data) availableArtists.value = availableArtists.value.data;
-  } catch(err) {
-    console.error('Could not load artists', err);
-  }
-};
-
 const openCreateModal = async () => {
   isEditing.value = false;
   Object.assign(songForm, { id: null, title: '', duration: 0, artists: [{ artist_id: '', role: 'main' }] });
   formError.value = null;
-  if(availableArtists.value.length === 0) await fetchAvailableArtists();
   isModalOpen.value = true;
 };
 
@@ -108,8 +97,8 @@ const handleEdit = async (song) => {
   isEditing.value = true;
   
   const initialArtists = song.artists && song.artists.length > 0 
-    ? song.artists.map(a => ({ artist_id: a.id || a.artist_id, role: a.role }))
-    : [{ artist_id: '', role: 'main' }];
+    ? song.artists.map(a => ({ artist_id: a.id || a.artist_id, artist_name: a.name || a.artist_name, role: a.role }))
+    : [{ artist_id: '', artist_name: '', role: 'main' }];
 
   Object.assign(songForm, {
     id: song.id,
@@ -118,7 +107,6 @@ const handleEdit = async (song) => {
     artists: [...initialArtists]
   });
   formError.value = null;
-  if(availableArtists.value.length === 0) await fetchAvailableArtists();
   isModalOpen.value = true;
 };
 
@@ -167,7 +155,7 @@ const removeArtist = (index) => {
 };
 
 const addArtist = () => {
-    songForm.artists.push({ artist_id: '', role: 'main' });
+    songForm.artists.push({ artist_id: '', artist_name: '', role: 'main' });
 };
 
 const executeDelete = async () => {
@@ -264,13 +252,15 @@ onMounted(() => {
           </div>
           
           <div v-for="(artistEntry, index) in songForm.artists" :key="index" class="artist-row flex gap-2 mb-2 items-start">
-              <div class="flex-1">
-                  <select v-model="artistEntry.artist_id" class="form-input" required>
-                    <option value="">Selecciona un Artista</option>
-                    <option v-for="artist in availableArtists" :key="artist.id" :value="artist.id">
-                      {{ artist.name }}
-                    </option>
-                  </select>
+              <div class="flex-1" style="min-width: 0;">
+                  <SearchSelect 
+                      v-model="artistEntry.artist_id"
+                      :initialName="artistEntry.artist_name"
+                      :searchFn="artistService.search"
+                      :formatDisplay="(a) => a.artist_name || a.name"
+                      placeholder="Busca un artista..."
+                      @select="(item) => artistEntry.artist_name = (item.artist_name || item.name)"
+                  />
               </div>
               <div class="w-1/3">
                   <select v-model="artistEntry.role" class="form-input">

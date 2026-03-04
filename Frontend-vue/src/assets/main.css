@@ -10,8 +10,14 @@
 body {
     font-family: var(--font-family);
     background-color: var(--bg-primary);
+    background-image: linear-gradient(rgba(15, 15, 19, 0.88), rgba(15, 15, 19, 0.88)), url('./concert_bg.png');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
     color: var(--text-primary);
     line-height: 1.5;
+    min-height: 100vh;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }

@@ -3,7 +3,10 @@ import { ref, reactive, watch } from 'vue';
 import { albumService } from '../../services/album.service';
 import { artistService } from '../../services/artist.service';
 import { songService } from '../../services/song.service';
+import { useToast } from '../../composables/useToast';
 import Modal from '../common/Modal.vue';
+
+const toast = useToast();
 import SearchSelect from '../common/SearchSelect.vue';
 import ArtistFormModal from '../artists/ArtistFormModal.vue';
 import SongFormModal from '../songs/SongFormModal.vue';
@@ -146,14 +149,16 @@ const saveAlbum = async () => {
     let resp;
     if (isEditing.value) {
       resp = await albumService.update(albumForm.id, payload);
+      toast.success('Álbum actualizado exitosamente');
     } else {
       resp = await albumService.create(payload);
+      toast.success('Álbum creado exitosamente');
     }
     emit('saved', resp.data || resp);
     emit('close');
   } catch (err) {
-    console.error(err);
-    formError.value = 'Error al guardar el álbum.';
+    toast.handleApiError(err, 'Error al guardar el álbum');
+    formError.value = 'Revisa los datos ingresados.';
   }
 };
 

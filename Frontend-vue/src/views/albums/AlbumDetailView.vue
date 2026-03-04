@@ -11,6 +11,9 @@ import AlbumFormModal from '../../components/albums/AlbumFormModal.vue';
 import Modal from '../../components/common/Modal.vue';
 import ConfirmDeleteModal from '../../components/common/ConfirmDeleteModal.vue';
 import SearchSelect from '../../components/common/SearchSelect.vue';
+import { useToast } from '../../composables/useToast';
+
+const toast = useToast();
 
 const route = useRoute();
 const albumId = route.params.id;
@@ -51,7 +54,7 @@ const fetchData = async () => {
     }
 
   } catch(err) {
-    console.error(err);
+    toast.handleApiError(err, 'No se pudieron cargar los datos del álbum');
     error.value = 'No se pudieron cargar los datos del álbum.';
   } finally {
     loading.value = false;
@@ -94,8 +97,7 @@ const handleEditSong = async (songStub) => {
       selectedSong.value = fullSongResp.data || fullSongResp;
       isSongModalOpen.value = true;
   } catch (err) {
-      console.error("Error fetching full song details for edit:", err);
-      alert('Error al obtener datos de la canción para edición.');
+      toast.handleApiError(err, 'Error al obtener datos de la canción');
   }
 };
 
@@ -142,10 +144,10 @@ const appendTrack = async () => {
 
         await albumService.addTrack(albumId, payload);
         isTrackModalOpen.value = false;
+        toast.success('Pista agregada al álbum');
         await fetchData(); // Refresh album details
     } catch (err) {
-        console.error(err);
-        trackFormError.value = 'Error al agregar la pista al álbum. Es posible que el número de pista ya exista o la canción ya esté agregada.';
+        toast.handleApiError(err, 'Error al agregar la pista al álbum');
     }
 };
 
@@ -165,11 +167,11 @@ const executeDelete = async () => {
     try {
         // Use removeTrack to purely remove the relationship, NOT delete the global song
         await albumService.removeTrack(albumId, itemToDeleteId.value);
+        toast.success('Pista removida del álbum');
         await fetchData(); // Refresh album data
         isDeleteModalOpen.value = false;
     } catch(err) {
-        console.error(err);
-        alert('Error al remover la pista');
+        toast.handleApiError(err, 'Error al remover la pista');
     }
 };
 

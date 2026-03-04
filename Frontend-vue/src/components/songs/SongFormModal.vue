@@ -2,7 +2,10 @@
 import { ref, reactive, watch } from 'vue';
 import { songService } from '../../services/song.service';
 import { artistService } from '../../services/artist.service';
+import { useToast } from '../../composables/useToast';
 import Modal from '../common/Modal.vue';
+
+const toast = useToast();
 import SearchSelect from '../common/SearchSelect.vue';
 import ArtistFormModal from '../artists/ArtistFormModal.vue';
 
@@ -97,15 +100,17 @@ const saveSong = async () => {
     let resp;
     if (isEditing.value) {
       resp = await songService.update(songForm.id, payload);
+      toast.success('Canción actualizada exitosamente');
     } else {
       resp = await songService.create(payload);
+      toast.success('Canción creada exitosamente');
     }
     
     emit('saved', resp.data || resp);
     emit('close');
   } catch (err) {
-    console.error(err);
-    formError.value = 'Error al guardar la canción.';
+    toast.handleApiError(err, 'Error al guardar la canción');
+    formError.value = 'Revisa los datos ingresados.';
   }
 };
 

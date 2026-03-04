@@ -10,6 +10,9 @@ import SongFormModal from '../../components/songs/SongFormModal.vue';
 import ConfirmDeleteModal from '../../components/common/ConfirmDeleteModal.vue';
 import SearchSelect from '../../components/common/SearchSelect.vue';
 import Pagination from '../../components/common/Pagination.vue';
+import { useToast } from '../../composables/useToast';
+
+const toast = useToast();
 
 const albums = ref([]);
 const loading = ref(true);
@@ -127,15 +130,16 @@ const executeDelete = async () => {
     try {
         if (isTrackDelete.value) {
            await albumService.removeTrack(activeAlbum.value.id, itemToDeleteId.value);
+           toast.success('Pista removida del álbum');
            await loadAlbumTracks(activeAlbum.value.id);
         } else {
            await albumService.delete(itemToDeleteId.value);
            albums.value = albums.value.filter(a => a.id !== itemToDeleteId.value);
+           toast.success('Álbum eliminado exitosamente');
         }
         isDeleteModalOpen.value = false;
     } catch(err) {
-        console.error(err);
-        alert('Error en la eliminación');
+        toast.handleApiError(err, 'Error en la eliminación');
     }
 };
 
@@ -184,8 +188,7 @@ const loadAlbumTracks = async (albumId) => {
         albumTracks.value = resp.tracks || [];
         trackForm.track_number = albumTracks.value.length + 1;
     } catch(err) {
-        console.error('Failed to load tracks', err);
-        formError.value = 'No se pudieron cargar las pistas del álbum.';
+        toast.handleApiError(err, 'No se pudieron cargar las pistas del álbum');
     }
 };
 
@@ -203,10 +206,10 @@ const addTrack = async () => {
       });
       
       trackForm.song_id = '';
+      toast.success('Pista agregada al álbum');
       await loadAlbumTracks(activeAlbum.value.id);
   } catch(err) {
-      console.error(err);
-      formError.value = 'Error al agregar la pista.';
+      toast.handleApiError(err, 'Error al agregar la pista');
   }
 };
 

@@ -3,11 +3,14 @@ import { ref, onMounted, reactive, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { songService } from '../../services/song.service';
 import { artistService } from '../../services/artist.service';
+import { useToast } from '../../composables/useToast';
 import SongItem from '../../components/songs/SongItem.vue';
 import SongFormModal from '../../components/songs/SongFormModal.vue';
 import ConfirmDeleteModal from '../../components/common/ConfirmDeleteModal.vue';
 import SearchSelect from '../../components/common/SearchSelect.vue';
 import Pagination from '../../components/common/Pagination.vue';
+
+const toast = useToast();
 
 const songs = ref([]);
 const loading = ref(true);
@@ -97,9 +100,9 @@ const executeDelete = async () => {
       await songService.delete(itemToDeleteId.value);
       songs.value = songs.value.filter(s => s.id !== itemToDeleteId.value);
       isDeleteModalOpen.value = false;
+      toast.success('Canción eliminada exitosamente');
     } catch(err) {
-      console.error(err);
-      alert('Error eliminando la canción');
+      toast.handleApiError(err, 'Error eliminando la canción');
     }
 };
 

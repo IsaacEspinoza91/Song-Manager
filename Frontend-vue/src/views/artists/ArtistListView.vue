@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, reactive, watch } from 'vue';
 import { artistService } from '../../services/artist.service';
+import { useToast } from '../../composables/useToast';
 import ArtistCard from '../../components/artists/ArtistCard.vue';
 import ArtistFormModal from '../../components/artists/ArtistFormModal.vue';
 import ConfirmDeleteModal from '../../components/common/ConfirmDeleteModal.vue';
@@ -115,9 +116,9 @@ const executeDelete = async () => {
       await artistService.delete(itemToDeleteId.value);
       artists.value = artists.value.filter(a => a.id !== itemToDeleteId.value);
       isDeleteModalOpen.value = false;
+      toast.success('Artista eliminado exitosamente');
     } catch(err) {
-      console.error(err);
-      alert('Error eliminando el artista');
+      toast.handleApiError(err, 'Error eliminando el artista');
     }
 };
 

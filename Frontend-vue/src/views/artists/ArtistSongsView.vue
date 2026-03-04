@@ -8,6 +8,9 @@ import Pagination from '../../components/common/Pagination.vue';
 import Breadcrumbs from '../../components/common/Breadcrumbs.vue';
 import SongFormModal from '../../components/songs/SongFormModal.vue';
 import ConfirmDeleteModal from '../../components/common/ConfirmDeleteModal.vue';
+import { useToast } from '../../composables/useToast';
+
+const toast = useToast();
 
 const route = useRoute();
 const artistId = computed(() => route.params.id);
@@ -33,7 +36,7 @@ const fetchArtistInfo = async () => {
         const resp = await artistService.getById(artistId.value);
         artist.value = resp.data || resp;
     } catch(err) {
-        console.error('Error fetching artist', err);
+        toast.handleApiError(err, 'Error al obtener artista');
     }
 };
 
@@ -60,8 +63,8 @@ const fetchSongs = async () => {
     pagination.total_pages = response.total_pages || 1;
     pagination.total_items = response.total_items || 0;
   } catch (err) {
+    toast.handleApiError(err, 'No se pudieron cargar las canciones');
     error.value = 'No se pudieron cargar las canciones';
-    console.error(err);
   } finally {
     loading.value = false;
   }
@@ -91,8 +94,7 @@ const handleEditSong = async (songStub) => {
       selectedSong.value = fullSongResp.data || fullSongResp;
       isSongModalOpen.value = true;
   } catch (err) {
-      console.error("Error fetching full song details for edit:", err);
-      alert('Error al obtener datos de la canción para edición.');
+      toast.handleApiError(err, 'Error al obtener datos de la canción');
   }
 };
 
@@ -115,9 +117,9 @@ const executeDelete = async () => {
       await songService.delete(itemToDeleteId.value);
       songs.value = songs.value.filter(s => s.id !== itemToDeleteId.value);
       isDeleteModalOpen.value = false;
+      toast.success('Canción eliminada exitosamente');
     } catch(err) {
-      console.error(err);
-      alert('Error eliminando la canción');
+      toast.handleApiError(err, 'Error eliminando la canción');
     }
 };
 

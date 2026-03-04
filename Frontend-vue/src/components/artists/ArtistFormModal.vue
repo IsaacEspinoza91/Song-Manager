@@ -1,7 +1,10 @@
 <script setup>
 import { ref, reactive, watch } from 'vue';
 import { artistService } from '../../services/artist.service';
+import { useToast } from '../../composables/useToast';
 import Modal from '../common/Modal.vue';
+
+const toast = useToast();
 
 const props = defineProps({
   isOpen: { type: Boolean, required: true },
@@ -45,14 +48,16 @@ const saveArtist = async () => {
     let resp;
     if (isEditing.value) {
       resp = await artistService.update(artistForm.id, artistForm);
+      toast.success('Artista actualizado exitosamente');
     } else {
       resp = await artistService.create(artistForm);
+      toast.success('Artista creado exitosamente');
     }
     emit('saved', resp.data || resp);
     emit('close');
   } catch (err) {
-    console.error(err);
-    formError.value = 'Error al guardar el artista. Revisa la consola y conexión.';
+    toast.handleApiError(err, 'Error al guardar el artista');
+    formError.value = 'Revisa los datos ingresados.';
   }
 };
 </script>

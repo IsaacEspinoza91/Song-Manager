@@ -1,5 +1,6 @@
 <script setup>
 import { defineProps, computed } from 'vue';
+import Icon from '../common/Icon.vue';
 
 const props = defineProps({
   album: {
@@ -49,8 +50,12 @@ const primaryArtistsList = computed(() => {
       <div class="meta">
         <span class="year">{{ releaseYear }}</span>
         <div class="actions" v-if="!readonly">
-          <button class="icon-btn" @click.stop="$emit('edit', album)">✏️</button>
-          <button class="icon-btn" @click.stop="$emit('delete', album.id)">🗑️</button>
+          <button class="icon-btn" @click.stop="$emit('edit', album)" title="Editar Álbum">
+             <Icon name="edit" />
+          </button>
+          <button class="icon-btn danger" @click.stop="$emit('delete', album.id)" title="Eliminar Álbum">
+             <Icon name="trash" />
+          </button>
         </div>
       </div>
     </div>

@@ -72,6 +72,7 @@ button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 0.5rem;
     padding: 0.5rem 1rem;
     border-radius: var(--radius-md);
     font-weight: 500;
@@ -105,4 +106,37 @@ button {
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 1.5rem;
+}
+
+/* Icon Button Colors */
+.icon-btn {
+    transition: all var(--transition-fast);
+}
+
+.icon-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.icon-btn .icon {
+    stroke-width: 2.5px;
+}
+
+.icon-btn[title*="Edit"],
+.icon-btn[title*="Editar"],
+.icon-btn.edit {
+    color: #fbbf24;
+    /* Amber/Yellow for editing */
+}
+
+.icon-btn[title*="Delete"],
+.icon-btn[title*="Eliminar"],
+.icon-btn.danger {
+    color: #ef4444;
+    /* Red for danger */
+}
+
+.label-icon {
+    margin-right: 0.5rem;
+    opacity: 0.8;
+    color: var(--accent-primary);
 }

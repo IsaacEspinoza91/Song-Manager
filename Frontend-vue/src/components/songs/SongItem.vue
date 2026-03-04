@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import Icon from '../common/Icon.vue';
 
 const props = defineProps({
   song: {
@@ -56,8 +57,12 @@ const ftArtists = computed(() => {
     </div>
     <div class="duration">{{ formatDuration(song.duration) }}</div>
     <div class="actions" v-if="!readonly">
-       <button class="icon-btn" @click="$emit('edit', song)" title="Edit">✏️</button>
-       <button class="icon-btn danger" @click="$emit('delete', song.id)" title="Delete">🗑️</button>
+       <button class="icon-btn" @click="$emit('edit', song)" title="Editar Canción">
+          <Icon name="edit" />
+       </button>
+       <button class="icon-btn danger" @click="$emit('delete', song.id)" title="Eliminar Canción">
+          <Icon name="trash" />
+       </button>
     </div>
   </div>
 </template>

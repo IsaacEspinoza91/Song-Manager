@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, reactive, watch } from 'vue';
 import { artistService } from '../../services/artist.service';
 import { useToast } from '../../composables/useToast';
+import Icon from '../../components/common/Icon.vue';
 import ArtistCard from '../../components/artists/ArtistCard.vue';
 import ArtistFormModal from '../../components/artists/ArtistFormModal.vue';
 import ConfirmDeleteModal from '../../components/common/ConfirmDeleteModal.vue';
@@ -137,7 +138,9 @@ onUnmounted(() => {
   <div class="artists-view" ref="viewContainer">
     <div class="header">
       <h1 class="gradient-text">Artistas</h1>
-      <button class="btn btn-primary" @click="openCreateModal">Nuevo Artista</button>
+      <button class="btn btn-primary" @click="openCreateModal" title="Crear un nuevo artista">
+        <Icon name="user-plus" /> Nuevo Artista
+      </button>
     </div>
 
     <!-- Filtros de Búsqueda -->
@@ -146,7 +149,9 @@ onUnmounted(() => {
         <input type="text" v-model="filters.name" placeholder="Buscar por nombre..." class="form-input" />
         <input type="text" v-model="filters.genre" placeholder="Filtro de género" class="form-input" />
         <input type="text" v-model="filters.country" placeholder="Filtro de país" class="form-input" />
-        <button type="submit" class="btn btn-primary shrink-btn">Buscar</button>
+        <button type="submit" class="btn btn-primary shrink-btn" title="Buscar artistas">
+          <Icon name="search" /> Buscar
+        </button>
       </form>
     </div>
     

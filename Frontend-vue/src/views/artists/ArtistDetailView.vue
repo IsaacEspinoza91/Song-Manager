@@ -10,6 +10,7 @@ import AlbumCard from '../../components/albums/AlbumCard.vue';
 import SongFormModal from '../../components/songs/SongFormModal.vue';
 import AlbumFormModal from '../../components/albums/AlbumFormModal.vue';
 import ArtistFormModal from '../../components/artists/ArtistFormModal.vue';
+import Icon from '../../components/common/Icon.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -240,8 +241,8 @@ onUnmounted(() => {
                           Añadido: {{ formatDate(artist.created_at) }}<br/>
                           Última actualización: {{ formatDate(artist.updated_at) }}
                       </p>
-                      <button class="btn btn-secondary btn-sm flex items-center gap-2" @click="openEditArtist">
-                          <span>✏️</span> Editar Artista
+                      <button class="btn btn-secondary btn-sm flex items-center gap-2" @click="openEditArtist" title="Editar este artista">
+                          <Icon name="edit" /> Editar Artista
                       </button>
                   </div>
               </div>
@@ -253,7 +254,9 @@ onUnmounted(() => {
           <div class="songs-section glass-panel p-4">
               <div class="flex justify-between items-center mb-4">
                   <h2 class="section-title mb-0">Canciones</h2>
-                  <button class="btn btn-primary btn-sm" @click="openCreateSong">+ Nueva Canción</button>
+                  <button class="btn btn-primary btn-sm" @click="openCreateSong" title="Crear nueva canción para este artista">
+                    <Icon name="music-plus" /> Nueva Canción
+                  </button>
               </div>
               <div v-if="songs.length === 0" class="empty-state mb-4">No hay canciones registradas.</div>
               <div v-else class="songs-list mb-4">
@@ -274,7 +277,9 @@ onUnmounted(() => {
           <div class="albums-section glass-panel p-4 mt-4" ref="albumsContainer">
               <div class="flex justify-between items-center mb-4">
                   <h2 class="section-title mb-0">Discografía</h2>
-                  <button class="btn btn-primary btn-sm" @click="openCreateAlbum">+ Nuevo Álbum</button>
+                  <button class="btn btn-primary btn-sm" @click="openCreateAlbum" title="Crear nuevo álbum para este artista">
+                    <Icon name="plus" /> Nuevo Álbum
+                  </button>
               </div>
               
               <div class="tabs mb-4">

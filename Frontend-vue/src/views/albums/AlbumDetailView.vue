@@ -11,6 +11,7 @@ import AlbumFormModal from '../../components/albums/AlbumFormModal.vue';
 import Modal from '../../components/common/Modal.vue';
 import ConfirmDeleteModal from '../../components/common/ConfirmDeleteModal.vue';
 import SearchSelect from '../../components/common/SearchSelect.vue';
+import Icon from '../../components/common/Icon.vue';
 import { useToast } from '../../composables/useToast';
 
 const toast = useToast();
@@ -227,8 +228,8 @@ onMounted(() => {
                           Añadido: {{ formatDate(album.created_at) }}<br/>
                           Última actualización: {{ formatDate(album.updated_at) }}
                       </p>
-                      <button class="btn btn-secondary btn-sm flex items-center gap-2" @click="openEditAlbum">
-                          <span>✏️</span> Editar Álbum
+                      <button class="btn btn-secondary btn-sm flex items-center gap-2" @click="openEditAlbum" title="Editar este álbum">
+                          <Icon name="edit" /> Editar Álbum
                       </button>
                   </div>
               </div>
@@ -239,7 +240,9 @@ onMounted(() => {
       <div class="tracks-section glass-panel p-4 mt-4">
           <div class="flex justify-between items-center mb-4">
               <h2 class="section-title mb-0">Pistas</h2>
-              <button class="btn btn-primary btn-sm" @click="openAddTrackModal">+ Agregar Pista</button>
+              <button class="btn btn-primary btn-sm" @click="openAddTrackModal" title="Agregar una nueva pista">
+                  <Icon name="plus" /> Agregar Pista
+              </button>
           </div>
           <div v-if="!album.tracks || album.tracks.length === 0" class="empty-state">
               No hay pistas registradas en este álbum.

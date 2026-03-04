@@ -5,6 +5,7 @@ import { artistService } from '../../services/artist.service';
 import { songService } from '../../services/song.service';
 import { useToast } from '../../composables/useToast';
 import Modal from '../common/Modal.vue';
+import Icon from '../common/Icon.vue';
 
 const toast = useToast();
 import SearchSelect from '../common/SearchSelect.vue';
@@ -199,12 +200,12 @@ const handleSongSaved = (newSong) => {
       <div v-if="formError" class="error-msg">{{ formError }}</div>
       
       <div class="form-group">
-        <label>Título</label>
+        <label><Icon name="disc" class="label-icon" /> Título</label>
         <input type="text" v-model="albumForm.title" class="form-input" required />
       </div>
 
       <div class="form-group">
-        <label>Tipo</label>
+        <label><Icon name="tag" class="label-icon" /> Tipo</label>
         <select v-model="albumForm.type" class="form-input" required>
           <option value="LP">LP (Long Play)</option>
           <option value="EP">EP (Extended Play)</option>
@@ -213,20 +214,22 @@ const handleSongSaved = (newSong) => {
       </div>
       
       <div class="form-group">
-        <label>Fecha de Lanzamiento</label>
+        <label><Icon name="calendar" class="label-icon" /> Fecha de Lanzamiento</label>
         <input type="date" v-model="albumForm.release_date" class="form-input" required />
       </div>
 
       <div class="form-group">
-        <label>URL de Portada (Opcional)</label>
+        <label><Icon name="image" class="label-icon" /> URL de Portada (Opcional)</label>
         <input type="url" v-model="albumForm.cover_url" class="form-input" />
       </div>
 
       <!-- Multiple Artists Selection -->
       <div class="form-group mb-4">
         <div class="flex justify-between items-center mb-2">
-            <label class="mb-0">Artistas</label>
-            <button type="button" class="btn btn-secondary btn-sm" @click="addArtistEntry">+ Agregar Artista</button>
+            <label class="mb-0"><Icon name="users" class="label-icon" /> Artistas</label>
+            <button type="button" class="btn btn-secondary btn-sm" @click="addArtistEntry">
+                <Icon name="plus" /> Agregar Artista
+            </button>
         </div>
         
         <div v-for="(artistEntry, index) in albumForm.artists" :key="index" class="artist-row flex gap-2 mb-2 items-start">
@@ -242,7 +245,7 @@ const handleSongSaved = (newSong) => {
                     />
                 </div>
                 <button type="button" class="btn btn-secondary icon-btn" title="Crear Nuevo Artista" @click="openCreateArtist(index)">
-                    ➕👤
+                    <Icon name="user-plus" />
                 </button>
             </div>
             <div class="w-1/3">
@@ -256,7 +259,7 @@ const handleSongSaved = (newSong) => {
                 type="button" 
                 class="btn btn-danger icon-btn" 
                 @click="removeArtistEntry(index)">
-                🗑️
+                <Icon name="trash" />
             </button>
         </div>
       </div>
@@ -285,7 +288,7 @@ const handleSongSaved = (newSong) => {
                             />
                        </div>
                        <button type="button" class="btn btn-secondary icon-btn" title="Crear Nueva Canción" @click="openCreateSong(idx)">
-                           ➕🎵
+                           <Icon name="music-plus" />
                        </button>
                    </div>
                    <button 
@@ -293,10 +296,12 @@ const handleSongSaved = (newSong) => {
                         type="button" 
                         class="btn btn-danger icon-btn" 
                         @click="removeTrackEntry(idx)">
-                        🗑️
+                        <Icon name="trash" />
                     </button>
                </div>
-               <button type="button" class="btn btn-secondary btn-sm mt-2" @click="addTrackEntry">+ Añadir otra pista</button>
+               <button type="button" class="btn btn-secondary btn-sm mt-2" @click="addTrackEntry">
+                   <Icon name="plus" /> Añadir otra pista
+               </button>
           </div>
       </div>
 

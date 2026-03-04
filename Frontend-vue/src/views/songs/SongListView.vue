@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router';
 import { songService } from '../../services/song.service';
 import { artistService } from '../../services/artist.service';
 import { useToast } from '../../composables/useToast';
+import Icon from '../../components/common/Icon.vue';
 import SongItem from '../../components/songs/SongItem.vue';
 import SongFormModal from '../../components/songs/SongFormModal.vue';
 import ConfirmDeleteModal from '../../components/common/ConfirmDeleteModal.vue';
@@ -115,7 +116,9 @@ onMounted(() => {
   <div class="songs-view">
     <div class="header">
       <h1 class="gradient-text">Canciones</h1>
-      <button class="btn btn-primary" @click="openCreateModal">Nueva Canción</button>
+      <button class="btn btn-primary" @click="openCreateModal" title="Crear nueva canción">
+        <Icon name="music-plus" /> Nueva Canción
+      </button>
     </div>
 
     <!-- Filtros de Búsqueda -->
@@ -130,7 +133,9 @@ onMounted(() => {
             placeholder="Todos los artistas (Búsqueda)"
             @select="(item) => filterArtistName = (item.artist_name || item.name)"
         />
-        <button type="submit" class="btn btn-primary shrink-btn">Buscar</button>
+        <button type="submit" class="btn btn-primary shrink-btn" title="Buscar canciones">
+            <Icon name="search" /> Buscar
+        </button>
       </form>
     </div>
     

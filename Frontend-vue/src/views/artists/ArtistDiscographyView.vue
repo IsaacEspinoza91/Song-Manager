@@ -6,6 +6,7 @@ import { artistService } from '../../services/artist.service';
 import AlbumCard from '../../components/albums/AlbumCard.vue';
 import Pagination from '../../components/common/Pagination.vue';
 import Breadcrumbs from '../../components/common/Breadcrumbs.vue';
+import Icon from '../../components/common/Icon.vue';
 
 const route = useRoute();
 const artistId = computed(() => route.params.id);
@@ -132,7 +133,9 @@ onUnmounted(() => {
             <option value="EP">EPs</option>
             <option value="Single">Singles</option>
         </select>
-        <button type="submit" class="btn btn-primary shrink-btn">Buscar</button>
+        <button type="submit" class="btn btn-primary shrink-btn" title="Buscar álbumes">
+          <Icon name="search" /> Buscar
+        </button>
       </form>
     </div>
     

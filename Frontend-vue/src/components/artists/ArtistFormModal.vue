@@ -3,6 +3,7 @@ import { ref, reactive, watch } from 'vue';
 import { artistService } from '../../services/artist.service';
 import { useToast } from '../../composables/useToast';
 import Modal from '../common/Modal.vue';
+import Icon from '../common/Icon.vue';
 
 const toast = useToast();
 
@@ -68,27 +69,27 @@ const saveArtist = async () => {
       <div v-if="formError" class="error-msg">{{ formError }}</div>
       
       <div class="form-group">
-        <label>Nombre</label>
+        <label><Icon name="user" class="label-icon" /> Nombre</label>
         <input type="text" v-model="artistForm.name" class="form-input" required />
       </div>
       
       <div class="form-group">
-        <label>Género</label>
+        <label><Icon name="tag" class="label-icon" /> Género</label>
         <input type="text" v-model="artistForm.genre" class="form-input" required />
       </div>
       
       <div class="form-group">
-        <label>País</label>
+        <label><Icon name="flag" class="label-icon" /> País</label>
         <input type="text" v-model="artistForm.country" class="form-input" required />
       </div>
       
       <div class="form-group">
-        <label>Biografía (Opcional)</label>
+        <label><Icon name="file-text" class="label-icon" /> Biografía (Opcional)</label>
         <textarea v-model="artistForm.bio" class="form-textarea" rows="3"></textarea>
       </div>
       
       <div class="form-group">
-        <label>URL de Imagen (Opcional)</label>
+        <label><Icon name="image" class="label-icon" /> URL de Imagen (Opcional)</label>
         <input type="url" v-model="artistForm.image_url" class="form-input" />
       </div>
       

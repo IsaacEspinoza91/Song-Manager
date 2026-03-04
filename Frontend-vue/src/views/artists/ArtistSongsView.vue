@@ -8,6 +8,7 @@ import Pagination from '../../components/common/Pagination.vue';
 import Breadcrumbs from '../../components/common/Breadcrumbs.vue';
 import SongFormModal from '../../components/songs/SongFormModal.vue';
 import ConfirmDeleteModal from '../../components/common/ConfirmDeleteModal.vue';
+import Icon from '../../components/common/Icon.vue';
 import { useToast } from '../../composables/useToast';
 
 const toast = useToast();
@@ -141,7 +142,9 @@ onMounted(() => {
     <div class="filters glass-panel">
       <form @submit.prevent="handleSearch" class="filter-form">
         <input type="text" v-model="filters.title" placeholder="Buscar por título de canción..." class="form-input" />
-        <button type="submit" class="btn btn-primary shrink-btn">Buscar</button>
+        <button type="submit" class="btn btn-primary shrink-btn" title="Buscar canciones">
+          <Icon name="search" /> Buscar
+        </button>
       </form>
     </div>
     

@@ -4,6 +4,7 @@ import { songService } from '../../services/song.service';
 import { artistService } from '../../services/artist.service';
 import { useToast } from '../../composables/useToast';
 import Modal from '../common/Modal.vue';
+import Icon from '../common/Icon.vue';
 
 const toast = useToast();
 import SearchSelect from '../common/SearchSelect.vue';
@@ -136,19 +137,21 @@ const handleArtistSaved = (newArtist) => {
       <div v-if="formError" class="error-msg">{{ formError }}</div>
       
       <div class="form-group">
-        <label>Título</label>
+        <label><Icon name="music" class="label-icon" /> Título</label>
         <input type="text" v-model="songForm.title" class="form-input" required />
       </div>
       
       <div class="form-group">
-        <label>Duración (Segundos)</label>
+        <label><Icon name="clock" class="label-icon" /> Duración (Segundos)</label>
         <input type="number" v-model="songForm.duration" class="form-input" required min="1" />
       </div>
 
       <div class="form-group mb-4">
         <div class="flex justify-between items-center mb-2">
-          <label class="mb-0">Artistas</label>
-          <button type="button" class="btn btn-secondary btn-sm" @click="addArtist">+ Agregar Artista</button>
+          <label class="mb-0"><Icon name="users" class="label-icon" /> Artistas</label>
+          <button type="button" class="btn btn-secondary btn-sm" @click="addArtist">
+            <Icon name="plus" /> Agregar Artista
+          </button>
         </div>
         
         <div v-for="(artistEntry, index) in songForm.artists" :key="index" class="artist-row flex gap-2 mb-2 items-start">
@@ -164,7 +167,7 @@ const handleArtistSaved = (newArtist) => {
                     />
                 </div>
                 <button type="button" class="btn btn-secondary icon-btn" title="Crear Nuevo Artista" @click="openCreateArtist(index)">
-                    ➕👤
+                    <Icon name="user-plus" />
                 </button>
             </div>
             <div class="w-1/3">
@@ -179,7 +182,7 @@ const handleArtistSaved = (newArtist) => {
                 type="button" 
                 class="btn btn-danger icon-btn" 
                 @click="removeArtist(index)">
-                🗑️
+                <Icon name="trash" />
             </button>
         </div>
       </div>

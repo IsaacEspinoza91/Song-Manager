@@ -10,6 +10,7 @@ import SongFormModal from '../../components/songs/SongFormModal.vue';
 import ConfirmDeleteModal from '../../components/common/ConfirmDeleteModal.vue';
 import SearchSelect from '../../components/common/SearchSelect.vue';
 import Pagination from '../../components/common/Pagination.vue';
+import Icon from '../../components/common/Icon.vue';
 import { useToast } from '../../composables/useToast';
 
 const toast = useToast();
@@ -236,7 +237,9 @@ onUnmounted(() => {
   <div class="albums-view" ref="viewContainer">
     <div class="header">
       <h1 class="gradient-text">Álbumes</h1>
-      <button class="btn btn-primary" @click="openCreateModal">Nuevo Álbum</button>
+      <button class="btn btn-primary" @click="openCreateModal" title="Crear un nuevo álbum">
+        <Icon name="plus" /> Nuevo Álbum
+      </button>
     </div>
 
     <!-- Filtros de Búsqueda -->
@@ -257,7 +260,9 @@ onUnmounted(() => {
             <option value="EP">EP</option>
             <option value="Single">Single</option>
         </select>
-        <button type="submit" class="btn btn-primary shrink-btn">Buscar</button>
+        <button type="submit" class="btn btn-primary shrink-btn" title="Buscar álbumes">
+          <Icon name="search" /> Buscar
+        </button>
       </form>
     </div>
     
@@ -301,7 +306,7 @@ onUnmounted(() => {
         <div v-if="formError" class="error-msg">{{ formError }}</div>
         
         <div class="tracks-list mb-4">
-            <h4 class="mb-2 text-sm text-secondary">Pistas Actuales</h4>
+            <h4 class="mb-2 text-sm text-secondary"><Icon name="list" class="label-icon" /> Pistas Actuales</h4>
             <div v-if="albumTracks.length === 0" class="text-sm text-muted mb-2">
                 No hay pistas en este álbum.
             </div>
@@ -311,15 +316,17 @@ onUnmounted(() => {
                         <span class="text-muted mr-2">{{ track.track_number }}.</span>
                         {{ track.title }}<span v-if="track.artists && track.artists.length > 0" class="text-secondary"> - {{ track.artists.map(a => a.name).join(', ') }}</span>
                     </span>
-                    <button class="icon-btn text-danger" @click="removeTrack(track.song_id)">🗑️</button>
+                    <button class="icon-btn danger" @click="removeTrack(track.song_id)" title="Remover pista del álbum">
+                        <Icon name="trash" />
+                    </button>
                 </li>
             </ul>
         </div>
 
         <form @submit.prevent="addTrack" class="add-track-form border-t pt-4">
-            <h4 class="mb-2 text-sm text-secondary">Agregar Pista</h4>
+            <h4 class="mb-2 text-sm text-secondary"><Icon name="plus" class="label-icon" /> Agregar Pista</h4>
             <div class="form-group">
-                <label>Canción</label>
+                <label><Icon name="music" class="label-icon" /> Canción</label>
                 <div class="flex gap-2">
                     <div class="flex-1">
                         <SearchSelect 
@@ -332,17 +339,19 @@ onUnmounted(() => {
                         />
                     </div>
                     <button type="button" class="btn btn-secondary icon-btn" title="Crear Nueva Canción" @click="openCreateTrackSong">
-                        ➕🎵
+                        <Icon name="music-plus" />
                     </button>
                 </div>
             </div>
             <div class="form-group flex gap-2">
                  <div class="w-1/3">
-                    <label>Número</label>
+                    <label><Icon name="list" class="label-icon" /> Número</label>
                     <input type="number" v-model="trackForm.track_number" class="form-input" required min="1" />
                  </div>
                  <div class="w-2/3 flex items-end">
-                    <button type="submit" class="btn btn-primary w-full h-11">Agregar Pista</button>
+                    <button type="submit" class="btn btn-primary w-full h-11" title="Añadir esta canción al álbum">
+                        <Icon name="plus" /> Agregar Pista
+                    </button>
                  </div>
             </div>
         </form>

@@ -28,7 +28,7 @@ const filters = reactive({
   artist_id: route.query.artist_id || ''
 });
 
-const searchArtists = ref([]); // For the combo box filter
+const filterArtistName = ref('');
 
 const fetchSongs = async () => {
   loading.value = true;
@@ -62,17 +62,6 @@ const changePage = (newPage) => {
     pagination.page = newPage;
     fetchSongs();
   }
-};
-
-// Also load artists for the filter combo box initially
-const loadArtistsForFilter = async () => {
-    try {
-        const resp = await artistService.getAll();
-        searchArtists.value = resp.data || resp;
-        if (searchArtists.value.data) searchArtists.value = searchArtists.value.data;
-    } catch (err) {
-        console.error('Failed to load artists for filter', err);
-    }
 };
 
 // Modal state
@@ -171,7 +160,6 @@ const executeDelete = async () => {
 
 onMounted(() => {
   fetchSongs();
-  loadArtistsForFilter();
 });
 </script>
 
@@ -187,10 +175,14 @@ onMounted(() => {
       <form @submit.prevent="handleSearch" class="filter-form">
         <input type="text" v-model="filters.title" placeholder="Buscar por título..." class="form-input" />
         <input type="text" v-model="filters.artist_name" placeholder="Filtro Artista (Nombre)" class="form-input" />
-        <select v-model="filters.artist_id" class="form-input">
-            <option value="">Todos los artistas (ID)</option>
-            <option v-for="a in searchArtists" :key="a.id" :value="a.id">{{ a.name }}</option>
-        </select>
+        <SearchSelect 
+            v-model="filters.artist_id"
+            :initialName="filterArtistName"
+            :searchFn="artistService.search"
+            :formatDisplay="(a) => a.artist_name || a.name"
+            placeholder="Todos los artistas (Búsqueda)"
+            @select="(item) => filterArtistName = (item.artist_name || item.name)"
+        />
         <button type="submit" class="btn btn-primary shrink-btn">Buscar</button>
       </form>
     </div>
@@ -360,7 +352,8 @@ select.form-input option {
   width: 100%;
 }
 
-.filter-form .form-input {
+.filter-form .form-input,
+.filter-form:deep(.search-select-wrapper) {
   flex: 1;
 }
 

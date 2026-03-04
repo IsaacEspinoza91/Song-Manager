@@ -51,7 +51,7 @@ const filters = reactive({
   type: ''
 });
 
-const searchArtists = ref([]); // For the combo box filter
+const filterArtistName = ref('');
 
 const fetchAlbums = async () => {
   loading.value = true;
@@ -86,16 +86,6 @@ const changePage = (newPage) => {
     pagination.page = newPage;
     fetchAlbums();
   }
-};
-
-const loadArtistsForFilter = async () => {
-    try {
-        const resp = await artistService.getAll();
-        searchArtists.value = resp.data || resp;
-        if (searchArtists.value.data) searchArtists.value = searchArtists.value.data;
-    } catch (err) {
-        console.error('Failed to load artists for filter', err);
-    }
 };
 
 // Modal State
@@ -304,14 +294,13 @@ const removeTrack = (songId) => {
     const track = albumTracks.value.find(t => t.song_id === songId);
     isTrackDelete.value = true;
     itemToDeleteId.value = songId;
-    itemToDeleteName.value = track ? track.title : 'esta pista';
+    itemToDeleteName.value = track ? `la pista "${track.title}" del álbum (la canción original no será eliminada)` : 'esta pista del álbum';
     isDeleteModalOpen.value = true;
 };
 
 onMounted(() => {
   pagination.limit = calculateLimit();
   fetchAlbums();
-  loadArtistsForFilter();
   window.addEventListener('resize', handleResize);
 });
 
@@ -332,10 +321,14 @@ onUnmounted(() => {
       <form @submit.prevent="handleSearch" class="filter-form">
         <input type="text" v-model="filters.title" placeholder="Buscar por título..." class="form-input" />
         <input type="text" v-model="filters.artist_name" placeholder="Filtro Artista (Nombre)" class="form-input" />
-        <select v-model="filters.artist_id" class="form-input">
-            <option value="">Todos los artistas (ID)</option>
-            <option v-for="a in searchArtists" :key="a.id" :value="a.id">{{ a.name }}</option>
-        </select>
+        <SearchSelect 
+            v-model="filters.artist_id"
+            :initialName="filterArtistName"
+            :searchFn="artistService.search"
+            :formatDisplay="(a) => a.artist_name || a.name"
+            placeholder="Todos los artistas (Búsqueda)"
+            @select="(item) => filterArtistName = (item.artist_name || item.name)"
+        />
         <select v-model="filters.type" class="form-input">
             <option value="">Todos los tipos</option>
             <option value="LP">LP</option>
@@ -490,7 +483,7 @@ onUnmounted(() => {
                 <li v-for="track in albumTracks" :key="track.song_id" class="track-item flex justify-between items-center glass-panel p-2 mb-2 rounded">
                     <span>
                         <span class="text-muted mr-2">{{ track.track_number }}.</span>
-                        {{ track.title }}
+                        {{ track.title }}<span v-if="track.artists && track.artists.length > 0" class="text-secondary"> - {{ track.artists.map(a => a.name).join(', ') }}</span>
                     </span>
                     <button class="icon-btn text-danger" @click="removeTrack(track.song_id)">🗑️</button>
                 </li>
@@ -589,7 +582,8 @@ select.form-input option {
   width: 100%;
 }
 
-.filter-form .form-input {
+.filter-form .form-input,
+.filter-form:deep(.search-select-wrapper) {
   flex: 1;
 }
 

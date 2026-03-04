@@ -23,7 +23,8 @@ type Song struct {
 	UpdatedAt time.Time  `json:"updated_at"`
 	DeletedAt *time.Time `json:"deleted_at,omitempty"`
 
-	Artists []ArtistWithRole `json:"artists,omitempty"`
+	Artists  []ArtistWithRole `json:"artists,omitempty"`
+	CoverURL *string          `json:"cover_url"` // Permite nulos
 }
 
 type ArtistSongInput struct {

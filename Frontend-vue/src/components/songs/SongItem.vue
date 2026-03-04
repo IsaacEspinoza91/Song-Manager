@@ -36,6 +36,7 @@ const ftArtists = computed(() => {
 <template>
   <div class="song-item glass-panel">
     <div class="number" v-if="index !== undefined">{{ index + 1 }}</div>
+    <img v-if="song.cover_url" :src="song.cover_url" alt="Cover" class="album-cover" />
     <div class="info">
       <h4 class="title">{{ song.title }}</h4>
       <p class="artists">
@@ -95,6 +96,14 @@ const ftArtists = computed(() => {
   margin-bottom: 0.1rem;
 }
 
+.album-cover {
+  width: 38px;
+  height: 38px;
+  border-radius: 0;
+  object-fit: cover;
+  margin-right: 1rem;
+}
+
 .artists {
   font-size: 0.85rem;
   color: var(--text-secondary);
@@ -130,10 +139,6 @@ const ftArtists = computed(() => {
 
 .icon-btn:hover {
   transform: scale(1.2);
-}
-
-.icon-btn.danger:hover {
-  /* No specific color as it's an emoji but we do the scale */
 }
 
 .artist-link {

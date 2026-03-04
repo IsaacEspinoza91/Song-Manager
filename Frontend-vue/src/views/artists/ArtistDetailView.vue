@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, reactive, watch } from 'vue';
+import { ref, onMounted, onUnmounted, computed, reactive, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { artistService } from '../../services/artist.service';
 import { songService } from '../../services/song.service';
@@ -26,6 +26,51 @@ const error = ref(null);
 const artist = ref(null);
 const songs = ref([]);
 const albums = ref([]);
+const activeAlbumTab = ref(''); // '' = Todos, 'LP' = Álbumes, 'EP' = EPs, 'Single' = Singles
+
+const albumsContainer = ref(null);
+const albumLimit = ref(5);
+
+const calculateAlbumLimit = () => {
+    if (!albumsContainer.value) return 5;
+    // albumsContainer has p-4 (1.5rem padding = 24px each side -> 48px total inner reduction)
+    const availableWidth = albumsContainer.value.clientWidth - 48;
+    let cols = Math.floor((availableWidth + 24) / 224); // Based on minmax(200px) + gap(1.5rem=24px)
+    if (cols < 1) cols = 1;
+    return cols; // 1 row only
+};
+
+let resizeTimer;
+const handleResize = () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+        const newLimit = calculateAlbumLimit();
+        if (newLimit !== albumLimit.value && newLimit > 0) {
+            albumLimit.value = newLimit;
+            fetchAlbums();
+        }
+    }, 300);
+};
+
+const fetchAlbums = async () => {
+    try {
+        const params = {
+            artist_id: artistId.value,
+            limit: albumLimit.value,
+            page: 1,
+            type: activeAlbumTab.value
+        };
+        const albumsResp = await albumService.getPaginated(params);
+        albums.value = albumsResp.data || [];
+    } catch(err) {
+        console.error('Failed to load albums', err);
+    }
+};
+
+const setAlbumTab = (tab) => {
+    activeAlbumTab.value = tab;
+    fetchAlbums();
+};
 
 const breadcrumbItems = computed(() => {
   return [
@@ -49,19 +94,23 @@ const fetchData = async () => {
     const songsResp = await songService.getPaginated({ artist_id: artistId.value, limit: 5 });
     songs.value = songsResp.data || [];
 
-    const albumsResp = await albumService.getByArtistId(artistId.value);
-    albums.value = albumsResp.data || albumsResp || [];
-
   } catch(err) {
     console.error(err);
     error.value = 'No se pudieron cargar los datos del artista.';
   } finally {
     loading.value = false;
+    await nextTick();
+    albumLimit.value = calculateAlbumLimit();
+    await fetchAlbums();
   }
 };
 
 const goToAllSongs = () => {
-    router.push({ path: '/songs', query: { artist_id: artistId.value } });
+    router.push(`/artists/${artistId.value}/songs`);
+};
+
+const goToDiscography = () => {
+    router.push(`/artists/${artistId.value}/discography`);
 };
 
 // ========================
@@ -132,8 +181,7 @@ const executeDelete = async () => {
     try {
         if (isAlbumDelete.value) {
             await albumService.delete(itemToDeleteId.value);
-            const albumsResp = await albumService.getByArtistId(artistId.value);
-            albums.value = albumsResp.data || albumsResp || [];
+            await fetchAlbums();
         } else {
             await songService.delete(itemToDeleteId.value);
             const songsResp = await songService.getPaginated({ artist_id: artistId.value, limit: 5 });
@@ -228,8 +276,7 @@ const saveAlbum = async () => {
     isAlbumModalOpen.value = false;
     
     // Refresh albums for this artist
-    const albumsResp = await albumService.getByArtistId(artistId.value);
-    albums.value = albumsResp.data || albumsResp || [];
+    await fetchAlbums();
   } catch (err) {
     console.error(err);
     albumFormError.value = 'Error al editar el álbum.';
@@ -244,7 +291,13 @@ const handleDeleteAlbum = (id, title) => {
 };
 
 onMounted(() => {
+  albumLimit.value = calculateAlbumLimit();
   fetchData();
+  window.addEventListener('resize', handleResize);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize);
 });
 </script>
 
@@ -279,7 +332,7 @@ onMounted(() => {
       <div class="content-grid mt-4">
           <!-- Top Songs -->
           <div class="songs-section glass-panel p-4">
-              <h2 class="section-title mb-4">Top Canciones</h2>
+              <h2 class="section-title mb-4">Canciones</h2>
               <div v-if="songs.length === 0" class="empty-state mb-4">No hay canciones registradas.</div>
               <div v-else class="songs-list mb-4">
                   <SongItem 
@@ -296,12 +349,20 @@ onMounted(() => {
           </div>
 
           <!-- Albums -->
-          <div class="albums-section glass-panel p-4 mt-4">
+          <div class="albums-section glass-panel p-4 mt-4" ref="albumsContainer">
               <div class="flex justify-between items-center mb-4">
-                  <h2 class="section-title mb-0">Álbumes</h2>
+                  <h2 class="section-title mb-0">Discografía</h2>
                   <button class="btn btn-primary btn-sm" @click="openCreateAlbum">+ Nuevo Álbum</button>
               </div>
-              <div v-if="albums.length === 0" class="empty-state">No hay álbumes registrados.</div>
+              
+              <div class="tabs mb-4">
+                  <button class="tab-btn" :class="{ active: activeAlbumTab === '' }" @click="setAlbumTab('')">Todos</button>
+                  <button class="tab-btn" :class="{ active: activeAlbumTab === 'LP' }" @click="setAlbumTab('LP')">Álbumes</button>
+                  <button class="tab-btn" :class="{ active: activeAlbumTab === 'EP' }" @click="setAlbumTab('EP')">EPs</button>
+                  <button class="tab-btn" :class="{ active: activeAlbumTab === 'Single' }" @click="setAlbumTab('Single')">Singles</button>
+              </div>
+
+              <div v-if="albums.length === 0" class="empty-state mb-4">No hay álbumes en esta categoría.</div>
               <div v-else class="albums-grid">
                   <AlbumCard 
                     v-for="album in albums" 
@@ -312,6 +373,8 @@ onMounted(() => {
                     @delete="handleDeleteAlbum(album.id, album.title)"
                   />
               </div>
+              
+              <button class="btn btn-secondary w-full" style="margin-top: 1rem" @click="goToDiscography">Ver toda la discografía</button>
           </div>
       </div>
     </div>
@@ -522,6 +585,35 @@ onMounted(() => {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 1.5rem;
+}
+
+.tabs {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+}
+
+.tab-btn {
+    background: transparent;
+    color: var(--text-secondary);
+    border: none;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+}
+
+.tab-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255,255,255,0.05);
+}
+
+.tab-btn.active {
+    background: var(--accent-primary);
+    color: var(--bg-primary);
 }
 
 .w-full { width: 100%; }

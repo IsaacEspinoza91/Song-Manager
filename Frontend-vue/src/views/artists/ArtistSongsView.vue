@@ -1,0 +1,200 @@
+<script setup>
+import { ref, onMounted, reactive, computed } from 'vue';
+import { useRoute } from 'vue-router';
+import { songService } from '../../services/song.service';
+import { artistService } from '../../services/artist.service';
+import SongItem from '../../components/songs/SongItem.vue';
+import Pagination from '../../components/common/Pagination.vue';
+import Breadcrumbs from '../../components/common/Breadcrumbs.vue';
+
+const route = useRoute();
+const artistId = computed(() => route.params.id);
+
+const songs = ref([]);
+const artist = ref(null);
+const loading = ref(true);
+const error = ref(null);
+
+const pagination = reactive({
+  page: 1,
+  limit: 15,
+  total_pages: 1,
+  total_items: 0
+});
+
+const filters = reactive({
+  title: ''
+});
+
+const fetchArtistInfo = async () => {
+    try {
+        const resp = await artistService.getById(artistId.value);
+        artist.value = resp.data || resp;
+    } catch(err) {
+        console.error('Error fetching artist', err);
+    }
+};
+
+const breadcrumbItems = computed(() => {
+  return [
+    { label: 'Inicio', to: '/' },
+    { label: 'Artistas', to: '/artists' },
+    { label: artist.value ? artist.value.name : 'Cargando...', to: `/artists/${artistId.value}` },
+    { label: 'Canciones' }
+  ];
+});
+
+const fetchSongs = async () => {
+  loading.value = true;
+  try {
+    const params = {
+      artist_id: artistId.value,
+      page: pagination.page,
+      limit: pagination.limit,
+      title: filters.title
+    };
+    const response = await songService.getPaginated(params);
+    songs.value = response.data || [];
+    pagination.total_pages = response.total_pages || 1;
+    pagination.total_items = response.total_items || 0;
+  } catch (err) {
+    error.value = 'No se pudieron cargar las canciones';
+    console.error(err);
+  } finally {
+    loading.value = false;
+  }
+};
+
+const handleSearch = () => {
+  pagination.page = 1;
+  fetchSongs();
+};
+
+const changePage = (newPage) => {
+  if (newPage >= 1 && newPage <= pagination.total_pages) {
+    pagination.page = newPage;
+    fetchSongs();
+  }
+};
+
+onMounted(() => {
+  fetchArtistInfo();
+  fetchSongs();
+});
+</script>
+
+<template>
+  <div class="songs-view">
+    <Breadcrumbs :items="breadcrumbItems" />
+    
+    <div class="header">
+      <h1 class="gradient-text">Todas las Canciones</h1>
+    </div>
+
+    <!-- Filtro de Búsqueda (Sólo título) -->
+    <div class="filters glass-panel">
+      <form @submit.prevent="handleSearch" class="filter-form">
+        <input type="text" v-model="filters.title" placeholder="Buscar por título de canción..." class="form-input" />
+        <button type="submit" class="btn btn-primary shrink-btn">Buscar</button>
+      </form>
+    </div>
+    
+    <div v-if="loading" class="loading">Cargando canciones...</div>
+    <div v-else-if="error" class="error">{{ error }}</div>
+    <div v-else class="song-list glass-panel">
+      <div class="list-header">
+        <div class="h-index">#</div>
+        <div class="h-title">Título</div>
+        <div class="h-duration">Duración</div>
+        <div class="h-actions"></div>
+      </div>
+      <SongItem 
+        v-for="(song, index) in songs" 
+        :key="song.id" 
+        :song="song"
+        :index="index"
+        :readonly="true"
+      />
+      <div v-if="songs.length === 0" class="empty-state">
+        No se encontraron canciones.
+      </div>
+    </div>
+
+    <!-- Controles de Paginación -->
+    <Pagination 
+      v-if="!loading && !error && songs.length > 0"
+      :currentPage="pagination.page"
+      :totalPages="pagination.total_pages"
+      :totalItems="pagination.total_items"
+      @page-change="changePage"
+    />
+  </div>
+</template>
+
+<style scoped>
+.songs-view {
+  padding-bottom: 2rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+}
+
+.song-list {
+  padding: 1rem;
+}
+
+.list-header {
+  display: flex;
+  padding: 0.5rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 1rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.h-index { width: 30px; }
+.h-title { flex: 1; }
+.h-duration { margin: 0 2rem; }
+.h-actions { width: 60px; }
+
+.loading, .error, .empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-secondary);
+  font-size: 1.25rem;
+}
+
+.error { color: var(--danger); }
+
+.filters {
+  padding: 1rem 1.5rem;
+  margin-bottom: 2rem;
+  display: flex;
+}
+
+.filter-form {
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+}
+
+.filter-form .form-input {
+  flex: 1;
+}
+
+.shrink-btn {
+  flex-shrink: 0;
+}
+</style>

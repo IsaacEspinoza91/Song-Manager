@@ -84,16 +84,20 @@ func (r *songRepository) GetByID(ctx context.Context, id int64) (*domain.Song, e
 	// 1. Obtener los datos principales de la Canción
 	var song domain.Song
 	querySong := `
-		SELECT id, title, duration, created_at, updated_at
-		FROM songs
-		WHERE id = $1 AND deleted_at IS NULL
-	`
+        SELECT s.id, s.title, s.duration, s.created_at, s.updated_at, a.cover_url
+        FROM songs s
+        LEFT JOIN tracks t ON s.id = t.song_id
+        LEFT JOIN albums a ON t.album_id = a.id
+        WHERE s.id = $1 AND s.deleted_at IS NULL
+        LIMIT 1
+    `
 	err := r.db.QueryRow(ctx, querySong, id).Scan(
 		&song.ID,
 		&song.Title,
 		&song.Duration,
 		&song.CreatedAt,
 		&song.UpdatedAt,
+		&song.CoverURL,
 	)
 
 	if err != nil {
@@ -211,8 +215,14 @@ func (r *songRepository) GetAll(ctx context.Context) ([]domain.Song, error) {
 
 // Utilizar subconsultas y no INNER JOIN, esto evita duplicados que rompan paginacion
 func (r *songRepository) GetAllPaginated(ctx context.Context, filter domain.SongFilter, params domain.PaginationParams) (*domain.PaginatedResult[domain.Song], error) {
-
-	baseQuery := `SELECT id, title, duration, created_at, updated_at FROM songs WHERE deleted_at IS NULL`
+	// Subqury obtiene caratula del album de la cancion
+	baseQuery := `
+        SELECT s.id, s.title, s.duration, s.created_at, s.updated_at,
+        (SELECT a.cover_url FROM albums a 
+         INNER JOIN tracks t ON t.album_id = a.id 
+         WHERE t.song_id = s.id LIMIT 1) as cover_url
+        FROM songs s 
+        WHERE s.deleted_at IS NULL`
 	countQuery := `SELECT COUNT(*) FROM songs WHERE deleted_at IS NULL`
 
 	var args []interface{}
@@ -271,7 +281,7 @@ func (r *songRepository) GetAllPaginated(ctx context.Context, filter domain.Song
 	var songIDs []int64
 	for rows.Next() {
 		var s domain.Song
-		if err := rows.Scan(&s.ID, &s.Title, &s.Duration, &s.CreatedAt, &s.UpdatedAt); err != nil {
+		if err := rows.Scan(&s.ID, &s.Title, &s.Duration, &s.CreatedAt, &s.UpdatedAt, &s.CoverURL); err != nil {
 			return nil, fmt.Errorf("error escaneando canción paginada: %w", err)
 		}
 		s.Artists = []domain.ArtistWithRole{}

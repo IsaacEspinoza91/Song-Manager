@@ -7,9 +7,9 @@ import { albumService } from '../../services/album.service';
 import Breadcrumbs from '../../components/common/Breadcrumbs.vue';
 import SongItem from '../../components/songs/SongItem.vue';
 import AlbumCard from '../../components/albums/AlbumCard.vue';
-import Modal from '../../components/common/Modal.vue';
-import ConfirmDeleteModal from '../../components/common/ConfirmDeleteModal.vue';
-import SearchSelect from '../../components/common/SearchSelect.vue';
+import SongFormModal from '../../components/songs/SongFormModal.vue';
+import AlbumFormModal from '../../components/albums/AlbumFormModal.vue';
+import ArtistFormModal from '../../components/artists/ArtistFormModal.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -114,55 +114,38 @@ const goToDiscography = () => {
 };
 
 // ========================
+// ARTIST SUMMARY (EDIT)
+// ========================
+const isArtistModalOpen = ref(false);
+
+const openEditArtist = () => {
+    isArtistModalOpen.value = true;
+};
+
+const handleArtistSaved = (updatedArtist) => {
+    artist.value = updatedArtist;
+    // update url if id changed? (id won't change)
+};
+
+// ========================
 // SONG CRUD (EDIT & DELETE)
 // ========================
 const isSongModalOpen = ref(false);
-const songFormError = ref(null);
-const songForm = reactive({
-  id: null,
-  title: '',
-  duration: 0,
-  artist_id: '',
-  artist_name: '',
-  role: 'main'
-});
+const selectedSong = ref(null);
 
 const handleEditSong = (song) => {
-  Object.assign(songForm, {
-    id: song.id,
-    title: song.title,
-    duration: song.duration,
-    artist_id: song.artists && song.artists.length > 0 ? song.artists[0].id : '',
-    artist_name: song.artists && song.artists.length > 0 ? song.artists[0].name || song.artists[0].artist_name : '',
-    role: song.artists && song.artists.length > 0 ? song.artists[0].role : 'main'
-  });
-  songFormError.value = null;
+  selectedSong.value = song;
   isSongModalOpen.value = true;
 };
 
-const saveSong = async () => {
-  try {
-    songFormError.value = null;
-    let payload = {
-      title: songForm.title,
-      duration: Number(songForm.duration)
-    };
-    if (songForm.artist_id) {
-       payload.artists = [{
-           artist_id: Number(songForm.artist_id),
-           role: songForm.role
-       }];
-    }
-    await songService.update(songForm.id, payload);
-    isSongModalOpen.value = false;
-    
-    // Refresh songs for this artist
+const openCreateSong = () => {
+  selectedSong.value = null;
+  isSongModalOpen.value = true;
+};
+
+const handleSongSaved = async () => {
     const songsResp = await songService.getPaginated({ artist_id: artistId.value, limit: 5 });
     songs.value = songsResp.data || [];
-  } catch (err) {
-    console.error(err);
-    songFormError.value = 'Error al editar la canción.';
-  }
 };
 
 const isDeleteModalOpen = ref(false);
@@ -197,90 +180,21 @@ const executeDelete = async () => {
 // ========================
 // ALBUM CRUD (EDIT & DELETE)
 // ========================
-const albumForm = reactive({
-  id: null,
-  title: '',
-  release_date: '',
-  type: 'LP',
-  cover_url: '',
-  artist_id: '',
-  artist_name: '',
-  is_primary: true,
-  artists: []
-});
-
-const isEditingAlbum = ref(false);
 const isAlbumModalOpen = ref(false);
-const albumFormError = ref(null);
+const selectedAlbum = ref(null);
 
 const openCreateAlbum = () => {
-    isEditingAlbum.value = false;
-    Object.assign(albumForm, {
-        id: null,
-        title: '',
-        release_date: '',
-        type: 'LP',
-        cover_url: '',
-        artist_id: artistId.value,
-        artist_name: artist.value ? artist.value.name : '',
-        is_primary: true,
-        artists: [{ artist_id: artistId.value, is_primary: true }]
-    });
-    albumFormError.value = null;
+    selectedAlbum.value = null;
     isAlbumModalOpen.value = true;
 };
 
 const handleEditAlbum = (album) => {
-  isEditingAlbum.value = true;
-  Object.assign(albumForm, {
-    id: album.id,
-    title: album.title,
-    release_date: album.release_date ? album.release_date.split('T')[0] : '', // format for date input
-    type: album.type || 'LP',
-    cover_url: album.cover_url || '',
-    artist_id: album.artists && album.artists.length > 0 ? album.artists[0].id : '',
-    artist_name: album.artists && album.artists.length > 0 ? album.artists[0].name || album.artists[0].artist_name : '',
-    is_primary: album.artists && album.artists.length > 0 ? album.artists[0].is_primary : true
-  });
-  albumFormError.value = null;
-  isAlbumModalOpen.value = true;
+    selectedAlbum.value = album;
+    isAlbumModalOpen.value = true;
 };
 
-const saveAlbum = async () => {
-  try {
-    albumFormError.value = null;
-    let payload = {
-      title: albumForm.title,
-      release_date: albumForm.release_date || undefined,
-      type: albumForm.type,
-      cover_url: albumForm.cover_url || undefined,
-      artists: []
-    };
-
-    if (albumForm.artist_id) {
-       payload.artists = [{
-           artist_id: Number(albumForm.artist_id),
-           is_primary: albumForm.is_primary
-       }];
-    } else {
-        albumFormError.value = 'Un álbum requiere de un artista.';
-        return;
-    }
-
-    if (isEditingAlbum.value) {
-        await albumService.update(albumForm.id, payload);
-    } else {
-        await albumService.create(payload);
-    }
-    
-    isAlbumModalOpen.value = false;
-    
-    // Refresh albums for this artist
+const handleAlbumSaved = async () => {
     await fetchAlbums();
-  } catch (err) {
-    console.error(err);
-    albumFormError.value = 'Error al editar el álbum.';
-  }
 };
 
 const handleDeleteAlbum = (id, title) => {
@@ -321,10 +235,15 @@ onUnmounted(() => {
                   <h1 class="artist-name">{{ artist.name }}</h1>
                   <p class="artist-meta">{{ artist.genre }} • {{ artist.country }}</p>
                   <p class="artist-bio" v-if="artist.bio">{{ artist.bio }}</p>
-                  <p class="artist-dates">
-                      Añadido: {{ formatDate(artist.created_at) }}<br/>
-                      Última actualización: {{ formatDate(artist.updated_at) }}
-                  </p>
+                  <div class="flex justify-between items-end w-full">
+                      <p class="artist-dates mb-0">
+                          Añadido: {{ formatDate(artist.created_at) }}<br/>
+                          Última actualización: {{ formatDate(artist.updated_at) }}
+                      </p>
+                      <button class="btn btn-secondary btn-sm flex items-center gap-2" @click="openEditArtist">
+                          <span>✏️</span> Editar Artista
+                      </button>
+                  </div>
               </div>
           </div>
       </div>
@@ -332,7 +251,10 @@ onUnmounted(() => {
       <div class="content-grid mt-4">
           <!-- Top Songs -->
           <div class="songs-section glass-panel p-4">
-              <h2 class="section-title mb-4">Canciones</h2>
+              <div class="flex justify-between items-center mb-4">
+                  <h2 class="section-title mb-0">Canciones</h2>
+                  <button class="btn btn-primary btn-sm" @click="openCreateSong">+ Nueva Canción</button>
+              </div>
               <div v-if="songs.length === 0" class="empty-state mb-4">No hay canciones registradas.</div>
               <div v-else class="songs-list mb-4">
                   <SongItem 
@@ -379,96 +301,29 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Song Edit Modal -->
-    <Modal :isOpen="isSongModalOpen" @close="isSongModalOpen = false" title="Editar Canción">
-      <form @submit.prevent="saveSong">
-        <div v-if="songFormError" class="error-msg">{{ songFormError }}</div>
-        
-        <div class="form-group">
-          <label>Título</label>
-          <input type="text" v-model="songForm.title" class="form-input" required />
-        </div>
-        
-        <div class="form-group">
-          <label>Duración (Segundos)</label>
-          <input type="number" v-model="songForm.duration" class="form-input" required min="1" />
-        </div>
+    <!-- Modals -->
+    <ArtistFormModal
+        :isOpen="isArtistModalOpen"
+        :artist="artist"
+        @close="isArtistModalOpen = false"
+        @saved="handleArtistSaved"
+    />
 
-        <div class="form-group">
-          <label>Artista Principal</label>
-          <SearchSelect 
-              v-model="songForm.artist_id"
-              :initialName="songForm.artist_name"
-              :searchFn="artistService.search"
-              :formatDisplay="(a) => a.artist_name || a.name"
-              placeholder="Busca un artista..."
-              @select="(item) => songForm.artist_name = (item.artist_name || item.name)"
-          />
-        </div>
+    <SongFormModal 
+        :isOpen="isSongModalOpen" 
+        :song="selectedSong" 
+        :initialArtist="artist"
+        @close="isSongModalOpen = false" 
+        @saved="handleSongSaved" 
+    />
 
-        <div class="form-group" v-if="songForm.artist_id">
-            <label>Rol del Artista</label>
-            <select v-model="songForm.role" class="form-input">
-                <option value="main">Main (Principal)</option>
-                <option value="ft">Featuring (Invitado)</option>
-                <option value="producer">Productor</option>
-            </select>
-        </div>
-
-        <div class="form-actions">
-          <button type="button" class="btn btn-secondary" @click="isSongModalOpen = false">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Guardar</button>
-        </div>
-      </form>
-    </Modal>
-
-    <!-- Album Edit Modal -->
-    <Modal :isOpen="isAlbumModalOpen" @close="isAlbumModalOpen = false" :title="isEditingAlbum ? 'Editar Álbum' : 'Crear Nuevo Álbum'">
-      <form @submit.prevent="saveAlbum">
-        <div v-if="albumFormError" class="error-msg">{{ albumFormError }}</div>
-        
-        <div class="form-group">
-          <label>Título</label>
-          <input type="text" v-model="albumForm.title" class="form-input" required />
-        </div>
-
-        <div class="form-group">
-          <label>Tipo</label>
-          <select v-model="albumForm.type" class="form-input" required>
-            <option value="LP">LP (Long Play)</option>
-            <option value="EP">EP (Extended Play)</option>
-            <option value="Single">Single (Sencillo)</option>
-          </select>
-        </div>
-        
-        <div class="form-group">
-          <label>Fecha de Lanzamiento</label>
-          <input type="date" v-model="albumForm.release_date" class="form-input" required />
-        </div>
-
-        <div class="form-group">
-          <label>URL de Portada (Opcional)</label>
-          <input type="url" v-model="albumForm.cover_url" class="form-input" />
-        </div>
-
-        <div class="form-group">
-          <label>Artista Principal</label>
-          <SearchSelect 
-              v-model="albumForm.artist_id"
-              :initialName="albumForm.artist_name"
-              :searchFn="artistService.search"
-              :formatDisplay="(a) => a.artist_name || a.name"
-              placeholder="Busca un artista..."
-              @select="(item) => albumForm.artist_name = (item.artist_name || item.name)"
-          />
-        </div>
-
-        <div class="form-actions">
-          <button type="button" class="btn btn-secondary" @click="isAlbumModalOpen = false">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Guardar</button>
-        </div>
-      </form>
-    </Modal>
+    <AlbumFormModal 
+        :isOpen="isAlbumModalOpen" 
+        :album="selectedAlbum" 
+        :initialArtist="artist"
+        @close="isAlbumModalOpen = false" 
+        @saved="handleAlbumSaved" 
+    />
 
     <!-- Confirm Delete Modal -->
     <ConfirmDeleteModal 
@@ -619,7 +474,15 @@ onUnmounted(() => {
 .w-full { width: 100%; }
 .mt-4 { margin-top: 1rem; }
 .mb-4 { margin-bottom: 1rem; }
+.mb-0 { margin-bottom: 0 !important; }
 .p-4 { padding: 1.5rem; }
+
+/* Utilities fallback */
+.flex { display: flex; }
+.justify-between { justify-content: space-between; }
+.items-center { align-items: center; }
+.items-end { align-items: flex-end; }
+.gap-2 { gap: 0.5rem; }
 
 .loading, .error, .empty-state {
     text-align: center;
@@ -628,19 +491,7 @@ onUnmounted(() => {
 }
 
 .error { color: var(--danger); }
-.error-msg {
-  color: var(--danger);
-  margin-bottom: 1rem;
-  font-size: 0.9rem;
-  background: rgba(239, 68, 68, 0.1);
-  padding: 0.5rem;
-  border-radius: var(--radius-sm);
-}
 
-select.form-input option {
-  background: var(--bg-primary);
-  color: var(--text-primary);
-}
 
 /* Responsive Adjustments */
 @media (max-width: 768px) {

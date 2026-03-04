@@ -6,6 +6,8 @@ import { artistService } from '../../services/artist.service';
 import { songService } from '../../services/song.service';
 import Breadcrumbs from '../../components/common/Breadcrumbs.vue';
 import SongItem from '../../components/songs/SongItem.vue';
+import SongFormModal from '../../components/songs/SongFormModal.vue';
+import AlbumFormModal from '../../components/albums/AlbumFormModal.vue';
 import Modal from '../../components/common/Modal.vue';
 import ConfirmDeleteModal from '../../components/common/ConfirmDeleteModal.vue';
 import SearchSelect from '../../components/common/SearchSelect.vue';
@@ -57,39 +59,39 @@ const fetchData = async () => {
 };
 
 // ========================
-// SONG CRUD (EDIT & DELETE)
+// ALBUM SUMMARY (EDIT)
+// ========================
+const isAlbumModalOpen = ref(false);
+
+const openEditAlbum = () => {
+    isAlbumModalOpen.value = true;
+};
+
+const handleAlbumSaved = async () => {
+    await fetchData();
+};
+
+// ========================
+// SONG CRUD (EDIT)
 // ========================
 const isSongModalOpen = ref(false);
-const songFormError = ref(null);
-const songForm = reactive({
-  id: null,
-  title: '',
-  duration: 0,
-  artists: []
-});
+const selectedSong = ref(null);
 
 const formatSongDisplay = (song) => {
     const artistNames = song.artists ? song.artists.map(a => a.artist_name || a.name).join(', ') : '';
     return artistNames ? `${song.title} - ${artistNames}` : song.title;
 };
 
+const openCreateTrackSong = () => {
+    selectedSong.value = null;
+    isSongModalOpen.value = true;
+};
+
 const handleEditSong = async (songStub) => {
   try {
       // Fetch full song data to get accurate artist roles for this specific song
       const fullSongResp = await songService.getById(songStub.id);
-      const song = fullSongResp.data || fullSongResp;
-      
-      const initialArtists = song.artists && song.artists.length > 0 
-        ? song.artists.map(a => ({ artist_id: a.id || a.artist_id, artist_name: a.name || a.artist_name, role: a.role }))
-        : [{ artist_id: '', artist_name: '', role: 'main' }];
-
-      Object.assign(songForm, {
-        id: song.id,
-        title: song.title,
-        duration: song.duration,
-        artists: [...initialArtists]
-      });
-      songFormError.value = null;
+      selectedSong.value = fullSongResp.data || fullSongResp;
       isSongModalOpen.value = true;
   } catch (err) {
       console.error("Error fetching full song details for edit:", err);
@@ -97,42 +99,12 @@ const handleEditSong = async (songStub) => {
   }
 };
 
-const saveSong = async () => {
-  try {
-    songFormError.value = null;
-    let payload = {
-      title: songForm.title,
-      duration: Number(songForm.duration)
-    };
-    
-    // Filter out rows without a selected artist
-    const validArtists = songForm.artists
-        .filter(a => a.artist_id)
-        .map(a => ({ artist_id: Number(a.artist_id), role: a.role }));
-        
-    if (validArtists.length > 0) {
-       payload.artists = validArtists;
-    }
-    
-    // We only update here, no creation from this view
-    await songService.update(songForm.id, payload);
-    isSongModalOpen.value = false;
-    
-    // Refresh album data to get updated tracks
+const handleSongSaved = async (newSong) => {
     await fetchData();
-  } catch (err) {
-    console.error(err);
-    songFormError.value = 'Error al editar la canción.';
-  }
-};
-
-// Add/Remove artist handlers
-const removeArtist = (index) => {
-    songForm.artists.splice(index, 1);
-};
-
-const addArtist = () => {
-    songForm.artists.push({ artist_id: '', artist_name: '', role: 'main' });
+    if (newSong && isTrackModalOpen.value) {
+        trackForm.song_id = newSong.id;
+        trackForm.song_title = formatSongDisplay(newSong);
+    }
 };
 
 // ========================
@@ -248,10 +220,15 @@ onMounted(() => {
                      <span class="release-year" v-if="album.release_date">{{ formatDate(album.release_date) }}</span>
                   </div>
 
-                  <p class="album-dates">
-                      Añadido: {{ formatDate(album.created_at) }}<br/>
-                      Última actualización: {{ formatDate(album.updated_at) }}
-                  </p>
+                  <div class="flex justify-between items-end w-full">
+                      <p class="album-dates mb-0">
+                          Añadido: {{ formatDate(album.created_at) }}<br/>
+                          Última actualización: {{ formatDate(album.updated_at) }}
+                      </p>
+                      <button class="btn btn-secondary btn-sm flex items-center gap-2" @click="openEditAlbum">
+                          <span>✏️</span> Editar Álbum
+                      </button>
+                  </div>
               </div>
           </div>
       </div>
@@ -280,61 +257,15 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Song Edit Modal -->
-    <Modal :isOpen="isSongModalOpen" @close="isSongModalOpen = false" title="Editar Canción">
-      <form @submit.prevent="saveSong">
-        <div v-if="songFormError" class="error-msg">{{ songFormError }}</div>
-        
-        <div class="form-group">
-          <label>Título</label>
-          <input type="text" v-model="songForm.title" class="form-input" required />
-        </div>
-        
-        <div class="form-group">
-          <label>Duración (Segundos)</label>
-          <input type="number" v-model="songForm.duration" class="form-input" required min="1" />
-        </div>
+    <!-- Modals -->
+    <AlbumFormModal
+        :isOpen="isAlbumModalOpen"
+        :album="album"
+        @close="isAlbumModalOpen = false"
+        @saved="handleAlbumSaved"
+    />
 
-        <div class="form-group mb-4">
-          <div class="flex justify-between items-center mb-2">
-            <label class="mb-0">Artistas</label>
-            <button type="button" class="btn btn-secondary btn-sm" @click="addArtist">+ Agregar Artista</button>
-          </div>
-          
-          <div v-for="(artistEntry, index) in songForm.artists" :key="index" class="artist-row flex gap-2 mb-2 items-start">
-              <div class="flex-1" style="min-width: 0;">
-                  <SearchSelect 
-                      v-model="artistEntry.artist_id"
-                      :initialName="artistEntry.artist_name"
-                      :searchFn="artistService.search"
-                      :formatDisplay="(a) => a.artist_name || a.name"
-                      placeholder="Busca un artista..."
-                      @select="(item) => artistEntry.artist_name = (item.artist_name || item.name)"
-                  />
-              </div>
-              <div class="w-1/3">
-                  <select v-model="artistEntry.role" class="form-input">
-                      <option value="main">Main (Principal)</option>
-                      <option value="ft">Featuring (Invitado)</option>
-                      <option value="producer">Productor</option>
-                  </select>
-              </div>
-              <button 
-                  v-if="songForm.artists.length > 1" 
-                  type="button" 
-                  class="btn btn-danger icon-btn" 
-                  @click="removeArtist(index)">
-                  🗑️
-              </button>
-          </div>
-        </div>
 
-        <div class="form-actions">
-          <button type="button" class="btn btn-secondary" @click="isSongModalOpen = false">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Guardar</button>
-        </div>
-      </form>
-    </Modal>
     
     <!-- Add Track Modal -->
     <Modal :isOpen="isTrackModalOpen" @close="isTrackModalOpen = false" title="Agregar Pista al Álbum">
@@ -343,14 +274,21 @@ onMounted(() => {
         
         <div class="form-group">
             <label>Seleccionar Canción Existente</label>
-            <SearchSelect 
-                v-model="trackForm.song_id"
-                :initialName="trackForm.song_title"
-                :searchFn="songService.search"
-                :formatDisplay="formatSongDisplay"
-                placeholder="Busca una canción..."
-                @select="(item) => trackForm.song_title = formatSongDisplay(item)"
-            />
+            <div class="flex gap-2">
+                <div class="flex-1">
+                    <SearchSelect 
+                        v-model="trackForm.song_id"
+                        :initialName="trackForm.song_title"
+                        :searchFn="songService.search"
+                        :formatDisplay="formatSongDisplay"
+                        placeholder="Busca una canción..."
+                        @select="(item) => trackForm.song_title = formatSongDisplay(item)"
+                    />
+                </div>
+                <button type="button" class="btn btn-secondary icon-btn" title="Crear Nueva Canción" @click="openCreateTrackSong">
+                    ➕🎵
+                </button>
+            </div>
         </div>
         
         <div class="form-group">
@@ -371,6 +309,13 @@ onMounted(() => {
       :itemName="itemToDeleteName"
       @close="isDeleteModalOpen = false"
       @confirm="executeDelete"
+    />
+
+    <SongFormModal 
+        :isOpen="isSongModalOpen" 
+        :song="selectedSong" 
+        @close="isSongModalOpen = false" 
+        @saved="handleSongSaved" 
     />
   </div>
 </template>
@@ -571,11 +516,13 @@ select.form-input option {
 .justify-between { justify-content: space-between; }
 .items-center { align-items: center; }
 .items-start { align-items: flex-start; }
+.items-end { align-items: flex-end; }
 .gap-2 { gap: 0.5rem; }
 .mb-2 { margin-bottom: 0.5rem; }
 .mb-4 { margin-bottom: 1rem; }
 .mb-0 { margin-bottom: 0 !important; }
 .flex-1 { flex: 1; }
+.w-full { width: 100%; }
 .w-1\/3 { width: 33.333333%; }
 
 .artist-row {

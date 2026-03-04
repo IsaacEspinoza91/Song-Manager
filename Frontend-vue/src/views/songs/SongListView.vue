@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router';
 import { songService } from '../../services/song.service';
 import { artistService } from '../../services/artist.service';
 import SongItem from '../../components/songs/SongItem.vue';
-import Modal from '../../components/common/Modal.vue';
+import SongFormModal from '../../components/songs/SongFormModal.vue';
 import ConfirmDeleteModal from '../../components/common/ConfirmDeleteModal.vue';
 import SearchSelect from '../../components/common/SearchSelect.vue';
 import Pagination from '../../components/common/Pagination.vue';
@@ -66,67 +66,20 @@ const changePage = (newPage) => {
 
 // Modal state
 const isModalOpen = ref(false);
-const isEditing = ref(false);
-const formError = ref(null);
-const songForm = reactive({
-  id: null,
-  title: '',
-  duration: 0,
-  artists: []
-});
+const selectedSong = ref(null);
 
 const openCreateModal = async () => {
-  isEditing.value = false;
-  Object.assign(songForm, { id: null, title: '', duration: 0, artists: [{ artist_id: '', role: 'main' }] });
-  formError.value = null;
+  selectedSong.value = null;
   isModalOpen.value = true;
 };
 
 const handleEdit = async (song) => {
-  isEditing.value = true;
-  
-  const initialArtists = song.artists && song.artists.length > 0 
-    ? song.artists.map(a => ({ artist_id: a.id || a.artist_id, artist_name: a.name || a.artist_name, role: a.role }))
-    : [{ artist_id: '', artist_name: '', role: 'main' }];
-
-  Object.assign(songForm, {
-    id: song.id,
-    title: song.title,
-    duration: song.duration,
-    artists: [...initialArtists]
-  });
-  formError.value = null;
+  selectedSong.value = song;
   isModalOpen.value = true;
 };
 
-const saveSong = async () => {
-  try {
-    formError.value = null;
-    let payload = {
-      title: songForm.title,
-      duration: Number(songForm.duration)
-    };
-    
-    // Filter out rows without a selected artist
-    const validArtists = songForm.artists
-        .filter(a => a.artist_id)
-        .map(a => ({ artist_id: Number(a.artist_id), role: a.role }));
-        
-    if (validArtists.length > 0) {
-       payload.artists = validArtists;
-    }
-
-    if (isEditing.value) {
-      await songService.update(songForm.id, payload);
-    } else {
-      await songService.create(payload);
-    }
-    isModalOpen.value = false;
+const handleSaved = async () => {
     await fetchSongs();
-  } catch (err) {
-    console.error(err);
-    formError.value = 'Error al guardar la canción.';
-  }
 };
 
 const isDeleteModalOpen = ref(false);
@@ -137,14 +90,6 @@ const handleDelete = (id, title) => {
   itemToDeleteId.value = id;
   itemToDeleteName.value = title || 'esta canción';
   isDeleteModalOpen.value = true;
-};
-
-const removeArtist = (index) => {
-    songForm.artists.splice(index, 1);
-};
-
-const addArtist = () => {
-    songForm.artists.push({ artist_id: '', artist_name: '', role: 'main' });
 };
 
 const executeDelete = async () => {
@@ -174,7 +119,6 @@ onMounted(() => {
     <div class="filters glass-panel">
       <form @submit.prevent="handleSearch" class="filter-form">
         <input type="text" v-model="filters.title" placeholder="Buscar por título..." class="form-input" />
-        <input type="text" v-model="filters.artist_name" placeholder="Filtro Artista (Nombre)" class="form-input" />
         <SearchSelect 
             v-model="filters.artist_id"
             :initialName="filterArtistName"
@@ -219,60 +163,12 @@ onMounted(() => {
     />
 
     <!-- Modal Form -->
-    <Modal :isOpen="isModalOpen" @close="isModalOpen = false" :title="isEditing ? 'Editar Canción' : 'Nueva Canción'">
-      <form @submit.prevent="saveSong">
-        <div v-if="formError" class="error-msg">{{ formError }}</div>
-        
-        <div class="form-group">
-          <label>Título</label>
-          <input type="text" v-model="songForm.title" class="form-input" required />
-        </div>
-        
-        <div class="form-group">
-          <label>Duración (Segundos)</label>
-          <input type="number" v-model="songForm.duration" class="form-input" required min="1" />
-        </div>
-
-        <div class="form-group mb-4">
-          <div class="flex justify-between items-center mb-2">
-            <label class="mb-0">Artistas (Opcional)</label>
-            <button type="button" class="btn btn-secondary btn-sm" @click="addArtist">+ Agregar Artista</button>
-          </div>
-          
-          <div v-for="(artistEntry, index) in songForm.artists" :key="index" class="artist-row flex gap-2 mb-2 items-start">
-              <div class="flex-1" style="min-width: 0;">
-                  <SearchSelect 
-                      v-model="artistEntry.artist_id"
-                      :initialName="artistEntry.artist_name"
-                      :searchFn="artistService.search"
-                      :formatDisplay="(a) => a.artist_name || a.name"
-                      placeholder="Busca un artista..."
-                      @select="(item) => artistEntry.artist_name = (item.artist_name || item.name)"
-                  />
-              </div>
-              <div class="w-1/3">
-                  <select v-model="artistEntry.role" class="form-input">
-                      <option value="main">Main (Principal)</option>
-                      <option value="ft">Featuring (Invitado)</option>
-                      <option value="producer">Productor</option>
-                  </select>
-              </div>
-              <button 
-                  v-if="songForm.artists.length > 1" 
-                  type="button" 
-                  class="btn btn-danger icon-btn" 
-                  @click="removeArtist(index)">
-                  🗑️
-              </button>
-          </div>
-        </div>
-
-        <div class="form-actions">
-          <button type="button" class="btn btn-secondary" @click="isModalOpen = false">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Guardar</button>
-        </div>
-      </form>
-    </Modal>
+    <SongFormModal 
+        :isOpen="isModalOpen"
+        :song="selectedSong"
+        @close="isModalOpen = false"
+        @saved="handleSaved"
+    />
 
     <!-- Confirm Delete Modal -->
     <ConfirmDeleteModal 

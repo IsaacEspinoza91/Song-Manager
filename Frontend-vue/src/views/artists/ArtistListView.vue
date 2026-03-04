@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted, reactive, watch } from 'vue';
 import { artistService } from '../../services/artist.service';
 import ArtistCard from '../../components/artists/ArtistCard.vue';
-import Modal from '../../components/common/Modal.vue';
+import ArtistFormModal from '../../components/artists/ArtistFormModal.vue';
 import ConfirmDeleteModal from '../../components/common/ConfirmDeleteModal.vue';
 import Pagination from '../../components/common/Pagination.vue';
 
@@ -84,48 +84,20 @@ const changePage = (newPage) => {
 
 // Modal state
 const isModalOpen = ref(false);
-const isEditing = ref(false);
-const formError = ref(null);
-const artistForm = reactive({
-  id: null,
-  name: '',
-  genre: '',
-  country: '',
-  bio: '',
-  image_url: ''
-});
+const selectedArtist = ref(null);
 
 const openCreateModal = () => {
-  isEditing.value = false;
-  Object.assign(artistForm, { id: null, name: '', genre: '', country: '', bio: '', image_url: '' });
-  formError.value = null;
+  selectedArtist.value = null;
   isModalOpen.value = true;
 };
 
 const handleEdit = (artist) => {
-  isEditing.value = true;
-  Object.assign(artistForm, artist);
-  formError.value = null;
+  selectedArtist.value = artist;
   isModalOpen.value = true;
 };
 
-const saveArtist = async () => {
-  try {
-    formError.value = null;
-    if (isEditing.value) {
-      const resp = await artistService.update(artistForm.id, artistForm);
-      const index = artists.value.findIndex(a => a.id === artistForm.id);
-      if (index !== -1) artists.value[index] = resp.data || resp;
-    } else {
-      const resp = await artistService.create(artistForm);
-      artists.value.push(resp.data || resp);
-    }
-    isModalOpen.value = false;
-    await fetchArtists(); // Refresh to ensure backend consistency
-  } catch (err) {
-    console.error(err);
-    formError.value = 'Error al guardar el artista. Revisa la consola y conexión.';
-  }
+const handleSaved = async () => {
+    await fetchArtists();
 };
 
 const isDeleteModalOpen = ref(false);
@@ -199,35 +171,12 @@ onUnmounted(() => {
     />
 
     <!-- Modal Form -->
-    <Modal :isOpen="isModalOpen" @close="isModalOpen = false" :title="isEditing ? 'Editar Artista' : 'Nuevo Artista'">
-      <form @submit.prevent="saveArtist">
-        <div v-if="formError" class="error-msg">{{ formError }}</div>
-        <div class="form-group">
-          <label>Nombre</label>
-          <input type="text" v-model="artistForm.name" class="form-input" required />
-        </div>
-        <div class="form-group">
-          <label>Género</label>
-          <input type="text" v-model="artistForm.genre" class="form-input" required />
-        </div>
-        <div class="form-group">
-          <label>País</label>
-          <input type="text" v-model="artistForm.country" class="form-input" required />
-        </div>
-        <div class="form-group">
-          <label>Biografía (Opcional)</label>
-          <textarea v-model="artistForm.bio" class="form-textarea" rows="3"></textarea>
-        </div>
-        <div class="form-group">
-          <label>URL de Imagen (Opcional)</label>
-          <input type="url" v-model="artistForm.image_url" class="form-input" />
-        </div>
-        <div class="form-actions">
-          <button type="button" class="btn btn-secondary" @click="isModalOpen = false">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Guardar</button>
-        </div>
-      </form>
-    </Modal>
+    <ArtistFormModal 
+        :isOpen="isModalOpen"
+        :artist="selectedArtist"
+        @close="isModalOpen = false"
+        @saved="handleSaved"
+    />
 
     <!-- Confirm Delete Modal -->
     <ConfirmDeleteModal 

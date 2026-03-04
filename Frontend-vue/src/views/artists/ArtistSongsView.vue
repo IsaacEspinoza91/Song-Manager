@@ -6,6 +6,8 @@ import { artistService } from '../../services/artist.service';
 import SongItem from '../../components/songs/SongItem.vue';
 import Pagination from '../../components/common/Pagination.vue';
 import Breadcrumbs from '../../components/common/Breadcrumbs.vue';
+import SongFormModal from '../../components/songs/SongFormModal.vue';
+import ConfirmDeleteModal from '../../components/common/ConfirmDeleteModal.vue';
 
 const route = useRoute();
 const artistId = computed(() => route.params.id);
@@ -77,6 +79,48 @@ const changePage = (newPage) => {
   }
 };
 
+// ========================
+// SONG CRUD (EDIT & DELETE)
+// ========================
+const isSongModalOpen = ref(false);
+const selectedSong = ref(null);
+
+const handleEditSong = async (songStub) => {
+  try {
+      const fullSongResp = await songService.getById(songStub.id);
+      selectedSong.value = fullSongResp.data || fullSongResp;
+      isSongModalOpen.value = true;
+  } catch (err) {
+      console.error("Error fetching full song details for edit:", err);
+      alert('Error al obtener datos de la canción para edición.');
+  }
+};
+
+const handleSongSaved = async () => {
+    await fetchSongs();
+};
+
+const isDeleteModalOpen = ref(false);
+const itemToDeleteId = ref(null);
+const itemToDeleteName = ref('');
+
+const handleDeleteSong = (id, title) => {
+  itemToDeleteId.value = id;
+  itemToDeleteName.value = title || 'esta canción';
+  isDeleteModalOpen.value = true;
+};
+
+const executeDelete = async () => {
+    try {
+      await songService.delete(itemToDeleteId.value);
+      songs.value = songs.value.filter(s => s.id !== itemToDeleteId.value);
+      isDeleteModalOpen.value = false;
+    } catch(err) {
+      console.error(err);
+      alert('Error eliminando la canción');
+    }
+};
+
 onMounted(() => {
   fetchArtistInfo();
   fetchSongs();
@@ -113,7 +157,9 @@ onMounted(() => {
         :key="song.id" 
         :song="song"
         :index="index"
-        :readonly="true"
+        :readonly="false"
+        @edit="handleEditSong"
+        @delete="handleDeleteSong(song.id, song.title)"
       />
       <div v-if="songs.length === 0" class="empty-state">
         No se encontraron canciones.
@@ -127,6 +173,22 @@ onMounted(() => {
       :totalPages="pagination.total_pages"
       :totalItems="pagination.total_items"
       @page-change="changePage"
+    />
+
+    <!-- Song Edit Modal -->
+    <SongFormModal 
+        :isOpen="isSongModalOpen" 
+        :song="selectedSong" 
+        @close="isSongModalOpen = false" 
+        @saved="handleSongSaved" 
+    />
+
+    <!-- Confirm Delete Modal -->
+    <ConfirmDeleteModal 
+      :isOpen="isDeleteModalOpen" 
+      :itemName="itemToDeleteName"
+      @close="isDeleteModalOpen = false"
+      @confirm="executeDelete"
     />
   </div>
 </template>

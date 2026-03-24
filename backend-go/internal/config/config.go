@@ -29,15 +29,22 @@ func Load() *AppConfig {
 		port = "8080"
 	}
 
-	// Validar Base de Datos
-	dbUser := getEnvOrFatal("DB_USER")
-	dbPass := getEnvOrFatal("DB_PASSWORD")
-	dbHost := getEnvOrFatal("DB_HOST")
-	dbPort := getEnvOrFatal("DB_PORT")
-	dbName := getEnvOrFatal("DB_NAME")
+	// Intentar obtener la URL completa (Producción)
+	dsn := os.Getenv("DATABASE_URL")
 
-	// Construir el Data Source Name
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", dbUser, dbPass, dbHost, dbPort, dbName)
+	if dsn == "" {
+		log.Println("DATABASE_URL no encontrada, construyendo desde variables individuales...")
+		// Validar Base de Datos
+		dbUser := getEnvOrFatal("DB_USER")
+		dbPass := getEnvOrFatal("DB_PASSWORD")
+		dbHost := getEnvOrFatal("DB_HOST")
+		dbPort := getEnvOrFatal("DB_PORT")
+		dbName := getEnvOrFatal("DB_NAME")
+
+		// Construcción estándar para local
+		dsn = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+			dbUser, dbPass, dbHost, dbPort, dbName)
+	}
 
 	return &AppConfig{
 		Port:  port,

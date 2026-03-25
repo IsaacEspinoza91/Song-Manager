@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"runtime/debug"
+	"strings"
 	"time"
 )
 
@@ -33,10 +35,29 @@ func Logger(next http.Handler) http.Handler {
 // CORS configura las cabeceras para permitir que un frontend consuma la API
 func CORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Logica verificacion que origen sea url con dns o url de vercel
+		requestOrigin := r.Header.Get("Origin")
+		allowedOriginsStr := os.Getenv("ALLOWED_ORIGINS")
+		allowedOrigins := strings.Split(allowedOriginsStr, ",")
+
+		isAllowed := false
+		for _, o := range allowedOrigins {
+			if requestOrigin == strings.TrimSpace(o) {
+				isAllowed = true
+				break
+			}
+		}
+
 		// 1. Cabeceras de permiso
-		w.Header().Set("Access-Control-Allow-Origin", "*") // En producción, cambiar "*" por dominio
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		if isAllowed {
+			w.Header().Set("Access-Control-Allow-Origin", requestOrigin)
+		} else if allowedOriginsStr == "" {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		}
+
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		// 2. Manejo del "Preflight Request"
 		// Los navegadores envían una petición OPTIONS antes de un POST/PUT para ver si tienen permiso.
